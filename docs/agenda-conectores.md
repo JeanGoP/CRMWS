@@ -47,6 +47,15 @@ user:read:user            leer tu usuario
 
 ### Google Calendar + Meet (`google`)
 
+**Conexión sencilla:** registra una aplicación OAuth web del negocio en Google
+Cloud, habilita Calendar API y configura `GOOGLE_OAUTH_CLIENT_ID` y
+`GOOGLE_OAUTH_CLIENT_SECRET` en el servidor. Añade como URI de retorno exacta
+`https://TU_DOMINIO/api/settings/calendar-oauth/google/callback`. Luego el
+profesional pulsa **Conectar con Google** en Ajustes → Agenda y concede acceso
+en Google. Hilora recibe un permiso delegado, nunca la contraseña. Si se
+administran muchas instalaciones, cada una conserva las credenciales de su
+propia aplicación. La conexión manual sigue disponible en la misma pantalla.
+
 Antes de ofrecer o reservar, consulta los eventos ocupados de tu calendario
 (también los recurrentes y los de día completo). Cada cita confirmada crea un
 evento con enlace de Meet. Solo se usan identificadores y horas: el CRM no
@@ -70,6 +79,17 @@ creado y el enlace pendiente — reintentarlo **re-lee ese mismo evento**, nunca
 crea uno duplicado en tu calendario.
 
 ### Microsoft 365 + Teams (`microsoft`)
+
+**Conexión sencilla:** registra una aplicación web en Microsoft
+Entra con el permiso delegado `Calendars.ReadWrite`. Configura
+`MICROSOFT_OAUTH_CLIENT_ID` y `MICROSOFT_OAUTH_CLIENT_SECRET` en el servidor y
+`MICROSOFT_OAUTH_TENANT_ID` si la aplicación admite solo ese directorio. Si la
+omites, se usa el endpoint `organizations` para aplicaciones multicliente. Luego
+registra `https://TU_DOMINIO/api/settings/calendar-oauth/microsoft/callback`
+como URI de retorno web. El profesional pulsa **Conectar con Microsoft** y
+concede el acceso en Microsoft; si su organización exige consentimiento del
+administrador, este debe aprobarlo allí. Hilora no ve la contraseña. La
+conexión manual sigue disponible.
 
 El CRM consulta los eventos ocupados del calendario de Outlook, incluidas las
 recurrencias, antes de ofrecer o confirmar una cita. Al reservar, crea un evento

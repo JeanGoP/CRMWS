@@ -108,6 +108,7 @@ export function ConnectorCredentials({
   const help = HELP[connector];
 
   const [connection, setConnection] = useState<Connection | null>(null);
+  const [easyConnect, setEasyConnect] = useState(false);
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{
@@ -119,6 +120,23 @@ export function ConnectorCredentials({
     setConnection(null);
     setValues({});
     setMessage(null);
+    if (connector === "google" || connector === "microsoft") {
+      void fetch("/api/settings/calendar-oauth/config")
+        .then((res) => res.ok ? res.json() : null)
+        .then((data: { google?: boolean; microsoft?: boolean } | null) => setEasyConnect(Boolean(data?.[connector])))
+        .catch(() => setEasyConnect(false));
+      const status = new URLSearchParams(window.location.search).get("calendar_oauth");
+      if (status) {
+        setMessage(status === `${connector}_connected`
+          ? { kind: "ok", text: `${meta.label} conectado correctamente` }
+          : { kind: "error", text: status === "denied"
+            ? "No se concedió acceso al calendario. Puedes intentarlo de nuevo."
+            : status === "not_configured"
+              ? "Falta configurar la aplicación OAuth de este proveedor en el servidor."
+              : "No se pudo completar la conexión. Comprueba los permisos e inténtalo de nuevo." });
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    } else setEasyConnect(false);
     void (async () => {
       const res = await fetch(`/api/settings/${connector}`).catch(() => null);
       if (!res?.ok) return;
@@ -126,7 +144,7 @@ export function ConnectorCredentials({
       setConnection(data.connection);
       if (data.connection) setValues({ ...data.connection.fields });
     })();
-  }, [connector]);
+  }, [connector, meta.label]);
 
   async function submit(mode: "test" | "save") {
     setBusy(true);
@@ -181,12 +199,19 @@ export function ConnectorCredentials({
         <CardDescription>{help.title}.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <ul className="list-disc space-y-1 pl-5 text-xs text-text-2">
-          {help.items.map((item, i) => (
-            <li key={i}>{item}</li>
-          ))}
-        </ul>
-
+        {(connector === "google" || connector === "microsoft") && (
+          <div className="space-y-2 rounded-sm border border-border p-4">
+            <p className="text-sm text-text-2">Autoriza tu calendario en la página oficial de {connector === "google" ? "Google" : "Microsoft"}. Hilora no recibe tu contraseña.</p>
+            {easyConnect ? (
+              <Button onClick={() => { window.location.href = `/api/settings/calendar-oauth/${connector}/start`; }}>
+                {connection ? "Reconectar" : "Conectar"} con {connector === "google" ? "Google" : "Microsoft"}
+              </Button>
+            ) : (
+              <p className="text-xs text-text-3">La conexión con un clic estará disponible cuando el administrador configure la aplicación OAuth de {connector === "google" ? "Google" : "Microsoft"} en el servidor.</p>
+            )}
+            {connection?.status === "connected" && <p className="text-sm text-brand-text">Calendario conectado.</p>}
+          </div>
+        )}
         {connection?.status === "error" && (
           <p className="rounded-sm border border-danger-soft bg-danger-tint px-3 py-2 text-sm text-danger-text">
             {meta.label} rechazó las últimas credenciales.
@@ -196,7 +221,12 @@ export function ConnectorCredentials({
           </p>
         )}
 
-        <div className="space-y-3">
+        <details className="space-y-3" open={connector === "zoom"}>
+          <summary className="cursor-pointer text-sm text-text-2">{connector === "zoom" ? "Credenciales de Zoom" : "Conexión manual avanzada"}</summary>
+          <ul className="list-disc space-y-1 pl-5 pt-3 text-xs text-text-2">
+            {help.items.map((item, i) => <li key={i}>{item}</li>)}
+          </ul>
+          <div className="space-y-3 pt-3">
           {fields.map((f) => (
             <div key={f.name} className="space-y-1.5">
               <Label htmlFor={`${connector}-${f.name}`}>{f.label}</Label>
@@ -216,7 +246,7 @@ export function ConnectorCredentials({
               {f.help && <p className="text-xs text-text-3">{f.help}</p>}
             </div>
           ))}
-        </div>
+          </div>
 
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="outline" onClick={() => submit("test")} disabled={busy}>
@@ -225,6 +255,9 @@ export function ConnectorCredentials({
           <Button onClick={() => submit("save")} disabled={busy}>
             {connection ? "Actualizar" : "Conectar"}
           </Button>
+        </div>
+        </details>
+        <div className="flex flex-wrap items-center gap-3">
           {connection && (
             <button
               type="button"
