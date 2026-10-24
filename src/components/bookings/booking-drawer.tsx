@@ -188,9 +188,9 @@ export function BookingDrawer({
                   <Video className="h-4 w-4 shrink-0" /> Enlace de la reunión
                 </a>
               )}
-              {b.connector === "google" && (
+              {(b.connector === "google" || b.connector === "microsoft") && (
                 <p className="text-xs text-text-3">
-                  Mueve y cancela desde Vocero: los cambios hechos en Google Calendar no se importan.
+                  Mueve y cancela desde este CRM: los cambios hechos directamente en el calendario externo no se importan.
                 </p>
               )}
               {b.notes && isSession && (

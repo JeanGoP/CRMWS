@@ -55,6 +55,13 @@ const FIELDS: Record<ExternalConnector, Field[]> = {
       help: "Déjalo en «primary» para tu calendario principal.",
     },
   ],
+  microsoft: [
+    { name: "tenantId", label: "Tenant ID", help: "Identificador del directorio de Microsoft Entra del negocio." },
+    { name: "clientId", label: "Client ID" },
+    { name: "clientSecret", label: "Client Secret", secret: true },
+    { name: "refreshToken", label: "Refresh token", secret: true, help: "Debe tener los permisos delegados offline_access y Calendars.ReadWrite." },
+    { name: "calendarId", label: "Calendario", placeholder: "primary", help: "Usa «primary» para el calendario principal de la cuenta." },
+  ],
 };
 
 /** Lo que hay que saber ANTES de pegar nada. Son los tropiezos reales. */
@@ -73,6 +80,14 @@ const HELP: Record<ExternalConnector, { title: string; items: string[] }> = {
       "Necesitas Client ID, Client Secret y un refresh token con el permiso de eventos de calendario (calendar.events).",
       "Con Google conectado, los eventos ocupados se descuentan antes de ofrecer y reservar horarios.",
       "IMPORTANTE: publica tu app OAuth «en producción». Si la dejas en modo prueba, Google revoca el permiso a los 7 días y las citas dejarán de crear su enlace sin previo aviso.",
+    ],
+  },
+  microsoft: {
+    title: "Conecta un calendario de Microsoft 365 con Teams habilitado",
+    items: [
+      "Registra una aplicación web en Microsoft Entra y autoriza la cuenta del profesional.",
+      "Solicita los permisos delegados offline_access y Calendars.ReadWrite; el refresh token queda cifrado en Hilora.",
+      "Los eventos ocupados de Outlook se descuentan antes de ofrecer horarios y cada cita crea una reunión de Teams.",
     ],
   },
 };
@@ -175,7 +190,7 @@ export function ConnectorCredentials({
         {connection?.status === "error" && (
           <p className="rounded-sm border border-danger-soft bg-danger-tint px-3 py-2 text-sm text-danger-text">
             {meta.label} rechazó las últimas credenciales.
-            {connector === "google"
+            {connector === "google" || connector === "microsoft"
               ? " No se ofrecerán nuevas citas hasta reconectar el calendario."
               : " Las citas se siguen agendando, pero sin enlace hasta que vuelvas a conectar."}
           </p>

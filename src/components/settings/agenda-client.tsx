@@ -300,11 +300,11 @@ export function AgendaClient() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Cómo se entrega la reunión</CardTitle>
+          <CardTitle>Calendario para las citas</CardTitle>
           <CardDescription>
-            El enlace fijo no depende de nadie. Los demás conectan con tu propia
-            cuenta del proveedor y, si alguna vez falla, la cita se agenda igual
-            y el enlace queda pendiente de reintentar.
+            Elige dónde consultar la disponibilidad y guardar nuevas citas. El
+            calendario interno funciona sin conectar cuentas externas. Google
+            y Microsoft son opcionales y requieren conectar la cuenta de cada negocio.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -348,7 +348,7 @@ export function AgendaClient() {
       {settings.connector === "enlace-fijo" && (
         <Card>
           <CardHeader>
-            <CardTitle>Tu sala de siempre</CardTitle>
+            <CardTitle>Enlace fijo opcional</CardTitle>
             <CardDescription>
               Se comparte tal cual al confirmar una cita. Si lo dejas vacío, las
               citas se agendan igual y sin enlace — nadie promete un enlace que

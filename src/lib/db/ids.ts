@@ -25,6 +25,7 @@ const prefixes = {
   offeredSlot: "ofs",
   zoomCredentials: "zcred",
   googleCredentials: "gcred",
+  microsoftCredentials: "mcred",
   // 016 — atribución de anuncios
   adAttribution: "att",
   conversionEvent: "cve",

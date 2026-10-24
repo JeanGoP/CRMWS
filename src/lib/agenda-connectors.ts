@@ -11,13 +11,14 @@
  * aquí — ver docs/agenda-conectores.md.
  */
 
-export type ConnectorId = "enlace-fijo" | "zoom" | "google";
+export type ConnectorId = "enlace-fijo" | "zoom" | "google" | "microsoft";
 
 /** Orden en que se le presentan al operador. El soberano primero. */
 export const CONNECTOR_ORDER: readonly ConnectorId[] = [
   "enlace-fijo",
   "zoom",
   "google",
+  "microsoft",
 ];
 
 export type ConnectorMeta = {
@@ -40,9 +41,9 @@ export type ConnectorMeta = {
 
 export const CONNECTOR_META: Record<ConnectorId, ConnectorMeta> = {
   "enlace-fijo": {
-    label: "Enlace fijo",
+    label: "Calendario interno",
     description:
-      "Tu sala de siempre: pegas la URL una vez y cada cita la reparte. Sin conectar nada.",
+      "Las citas y los bloqueos se guardan aquí. Puedes añadir un enlace fijo opcional.",
     perBookingLink: false,
     updatesMeeting: false,
     writesCalendarEvent: false,
@@ -63,6 +64,15 @@ export const CONNECTOR_META: Record<ConnectorId, ConnectorMeta> = {
     label: "Google Calendar + Meet",
     description:
       "Cada cita crea un evento en tu calendario con su enlace de Meet.",
+    perBookingLink: true,
+    updatesMeeting: true,
+    writesCalendarEvent: true,
+    external: true,
+  },
+  microsoft: {
+    label: "Microsoft 365 + Teams",
+    description:
+      "Consulta la ocupación de Outlook y crea cada cita en el calendario con su enlace de Teams.",
     perBookingLink: true,
     updatesMeeting: true,
     writesCalendarEvent: true,

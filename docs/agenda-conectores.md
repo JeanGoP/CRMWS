@@ -4,8 +4,8 @@ Un **conector** es la forma en que una cita del CRM se convierte en una reunión
 de verdad. El motor de agenda no sabe de proveedores: sabe *cuándo* atiende el
 negocio y *quién* reservó. Entregar la reunión es trabajo del conector.
 
-Esa separación es lo que hace que agregar Teams, Outlook, CalDAV o Cal.com en
-tu fork sea escribir un archivo y una tabla — no pelearte con el motor.
+Esa separación permite elegir por negocio entre la agenda interna, Google y
+Microsoft 365 sin cambiar el motor de citas.
 
 > Los conectores que hablan con un servicio externo existen bajo cinco
 > condiciones constitucionales (Principio II, v1.4.0): apagados por defecto,
@@ -15,12 +15,11 @@ tu fork sea escribir un archivo y una tabla — no pelearte con el motor.
 
 ## Los que vienen incluidos
 
-### Enlace fijo (`enlace-fijo`) — el default
+### Calendario interno (`enlace-fijo`) — el default
 
-Tu sala de siempre. Pegas la URL una vez en Ajustes → Agenda y cada cita la
-reparte. No habla con nadie, no pide credenciales y no puede fallar. Si lo
-dejas vacío, las citas se agendan igual y sin enlace: nadie promete lo que no
-tiene.
+Las citas y bloqueos se guardan en el CRM. Puedes pegar la URL de una sala fija
+en Ajustes → Agenda; si la dejas vacía, las citas se agendan sin enlace. No
+requiere una cuenta externa.
 
 Es también la razón de que encender la agenda no te obligue a conectar nada.
 
@@ -70,9 +69,36 @@ re-lee el evento; y si aun así no llegó, la cita se entrega con el evento
 creado y el enlace pendiente — reintentarlo **re-lee ese mismo evento**, nunca
 crea uno duplicado en tu calendario.
 
+### Microsoft 365 + Teams (`microsoft`)
+
+El CRM consulta los eventos ocupados del calendario de Outlook, incluidas las
+recurrencias, antes de ofrecer o confirmar una cita. Al reservar, crea un evento
+con enlace de Teams. Reprogramar y cancelar actúan sobre ese mismo evento.
+Solo guarda los horarios ocupados en memoria durante la consulta; no copia el
+contenido de los eventos existentes.
+
+Se necesita una cuenta de **Microsoft 365 con Teams habilitado**, una aplicación
+web registrada por el negocio en Microsoft Entra, y consentimiento delegado de
+la cuenta del profesional con `offline_access` y `Calendars.ReadWrite`. La app
+debe permitir el flujo de código de autorización y tener un Client Secret. En
+Ajustes → Agenda se introducen el Tenant ID, Client ID, Client Secret y refresh
+token, además del ID del calendario si no es el principal (`primary`). El CRM
+cifra los secretos y actualiza el refresh token si Microsoft lo rota. No pidas
+estas credenciales por chat; introdúcelas directamente en la pantalla.
+
+Si Microsoft no permite reuniones de Teams en ese calendario, el botón
+**Probar** y el guardado rechazan la conexión. Una cuenta personal de Outlook
+puede tener calendario, pero no necesariamente Teams empresarial: este conector
+requiere `teamsForBusiness`.
+
+La [documentación de Microsoft sobre el flujo OAuth](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow)
+explica cómo obtener el refresh token. La [API de eventos](https://learn.microsoft.com/en-us/graph/api/calendar-post-events?view=graph-rest-1.0)
+y [calendarView](https://learn.microsoft.com/en-us/graph/api/calendar-list-calendarview?view=graph-rest-1.0)
+describen la creación de reuniones y la lectura de ocupación.
+
 ## Qué pasa cuando el proveedor falla
 
-Si Google no responde al consultar disponibilidad, no se ofrecen ni reservan
+Si Google o Microsoft no responden al consultar disponibilidad, no se ofrecen ni reservan
 nuevas citas: no se puede garantizar que el horario esté libre. Una cita ya
 confirmada en el CRM sigue existiendo.
 

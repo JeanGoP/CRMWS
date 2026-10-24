@@ -219,18 +219,24 @@ async function pasoAgenda(organizationId: string, db: Db): Promise<ReadinessStep
     .from(schema.googleCredentials)
     .where(scoped(schema.googleCredentials.organizationId, organizationId))
     .limit(1);
+  const [microsoft] = await db
+    .select({ status: schema.microsoftCredentials.status })
+    .from(schema.microsoftCredentials)
+    .where(scoped(schema.microsoftCredentials.organizationId, organizationId))
+    .limit(1);
 
   const status = verifyCalendar(settings, {
     zoom: zoom?.status === "connected",
     google: google?.status === "connected",
+    microsoft: microsoft?.status === "connected",
   });
 
   let problem: string | null = null;
   if (status === "unsupported") {
     problem = `El conector «${settings?.connector}» no existe en esta instancia: elige otro en Ajustes → Agenda.`;
   } else if (status === "pending" && settings && settings.connector !== "enlace-fijo") {
-    const nombre = settings.connector === "zoom" ? "Zoom" : "Google";
-    const cred = settings.connector === "zoom" ? zoom : google;
+    const nombre = settings.connector === "zoom" ? "Zoom" : settings.connector === "microsoft" ? "Microsoft 365" : "Google";
+    const cred = settings.connector === "zoom" ? zoom : settings.connector === "microsoft" ? microsoft : google;
     problem = cred
       ? `${nombre} rechazó la credencial guardada: vuelve a conectarlo en Ajustes → Agenda.`
       : `Elegiste ${nombre} pero no está conectado: pega sus credenciales en Ajustes → Agenda.`;

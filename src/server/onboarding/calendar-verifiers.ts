@@ -21,7 +21,7 @@ export type CalendarConfiguration = {
 export type CalendarReadiness = "ready" | "pending" | "unsupported";
 
 /** Qué conectores tienen credencial guardada y aceptada. */
-export type CalendarConnections = { google: boolean; zoom: boolean };
+export type CalendarConnections = { google: boolean; zoom: boolean; microsoft?: boolean };
 
 const HORA = /^\d{2}:\d{2}$/;
 
@@ -58,5 +58,6 @@ export function verifyCalendar(
   if (!isConnectorId(configuration.connector)) return "unsupported";
   if (configuration.connector === "google" && !connections.google) return "pending";
   if (configuration.connector === "zoom" && !connections.zoom) return "pending";
+  if (configuration.connector === "microsoft" && !connections.microsoft) return "pending";
   return "ready";
 }

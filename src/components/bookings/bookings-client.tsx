@@ -206,7 +206,7 @@ export function BookingsClient({
       blocks: shown.filter((b) => b.kind === "block" && b.status !== "cancelada").length,
       cancelled: shown.filter((b) => b.status === "cancelada").length,
       tests: inRange.filter((b) => b.isTest).length,
-      google: inRange.some((b) => b.connector === "google"),
+      externalCalendar: inRange.some((b) => b.connector === "google" || b.connector === "microsoft"),
     };
   }, [all, timezone, range, showTests]);
 
@@ -460,7 +460,7 @@ function StatusBar({
   onShowCancelled,
   onShowTests,
 }: {
-  counts: { sessions: number; blocks: number; cancelled: number; tests: number; google: boolean };
+  counts: { sessions: number; blocks: number; cancelled: number; tests: number; externalCalendar: boolean };
   timezone: string;
   showCancelled: boolean;
   showTests: boolean;
@@ -482,7 +482,7 @@ function StatusBar({
       </span>
       <span className="hidden xl:inline">
         Hora del negocio ({timezone})
-        {counts.google && " · Los cambios hechos en Google Calendar no se importan"}
+        {counts.externalCalendar && " · Los cambios hechos fuera del CRM no se importan"}
       </span>
       <Legend />
       <div className="ml-auto flex flex-wrap items-center gap-x-4 gap-y-1.5">

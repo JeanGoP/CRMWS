@@ -18,6 +18,11 @@ import {
   getGoogleCredentials,
   markGoogleError,
 } from "@/server/agenda/connectors/google-credentials";
+import { microsoftConnector } from "@/server/agenda/connectors/microsoft";
+import {
+  getMicrosoftCredentials,
+  markMicrosoftError,
+} from "@/server/agenda/connectors/microsoft-credentials";
 
 /**
  * 015 — El catálogo de conectores y la ÚNICA puerta por la que el motor habla
@@ -96,6 +101,14 @@ export async function bindConnector(
       }
       return bind(googleConnector, creds);
     }
+
+    case "microsoft": {
+      const creds = await getMicrosoftCredentials(organizationId);
+      if (!creds) {
+        throw new ConnectorError("microsoft", "Microsoft 365 no está conectado: faltan las credenciales");
+      }
+      return bind(microsoftConnector, creds);
+    }
   }
 }
 
@@ -120,6 +133,9 @@ export async function markConnectorAuthError(
       return;
     case "google":
       await markGoogleError(organizationId);
+      return;
+    case "microsoft":
+      await markMicrosoftError(organizationId);
       return;
   }
 }

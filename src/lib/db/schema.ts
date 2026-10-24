@@ -969,6 +969,32 @@ export const googleCredentials = pgTable(
   (t) => [uniqueIndex("google_credentials_org_uq").on(t.organizationId)]
 );
 
+/** Credenciales delegadas de Microsoft 365 para calendario y Teams. */
+export const microsoftCredentials = pgTable(
+  "microsoft_credentials",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    tenantId: text("tenant_id").notNull(),
+    clientId: text("client_id").notNull(),
+    clientSecretCipher: text("client_secret_cipher").notNull(),
+    clientSecretIv: text("client_secret_iv").notNull(),
+    clientSecretTag: text("client_secret_tag").notNull(),
+    refreshTokenCipher: text("refresh_token_cipher").notNull(),
+    refreshTokenIv: text("refresh_token_iv").notNull(),
+    refreshTokenTag: text("refresh_token_tag").notNull(),
+    calendarId: text("calendar_id").notNull().default("primary"),
+    status: text("status", { enum: ["connected", "error"] })
+      .notNull()
+      .default("connected"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("microsoft_credentials_org_uq").on(t.organizationId)]
+);
+
 export const agentTestCase = pgTable(
   "agent_test_case",
   {

@@ -15,6 +15,9 @@ import {
 import { getSettings, type CalendarSettings } from "@/server/agenda/settings";
 import { getGoogleCredentials } from "@/server/agenda/connectors/google-credentials";
 import { googleBusyIntervals } from "@/server/agenda/connectors/google";
+import { getMicrosoftCredentials, markMicrosoftError } from "@/server/agenda/connectors/microsoft-credentials";
+import { microsoftBusyIntervals } from "@/server/agenda/connectors/microsoft";
+import { ConnectorError } from "@/server/agenda/connectors/types";
 
 /**
  * 015 — Motor de disponibilidad:
@@ -117,6 +120,29 @@ export async function computeAvailability(
       excludeEventId = own[0]?.externalRef ?? undefined;
     }
     busy.push(...await googleBusyIntervals(creds, fromUtc, toUtc, tz, excludeEventId));
+  }
+  if (settings.connector === "microsoft") {
+    const creds = await getMicrosoftCredentials(organizationId);
+    if (!creds || creds.status !== "connected") {
+      throw new Error("Conecta Microsoft 365 antes de ofrecer citas");
+    }
+    let excludeEventId: string | undefined;
+    if (opts?.excludeBookingId) {
+      const own = await getDb()
+        .select({ externalRef: schema.booking.externalRef })
+        .from(schema.booking)
+        .where(scoped(schema.booking.organizationId, organizationId, eq(schema.booking.id, opts.excludeBookingId)))
+        .limit(1);
+      excludeEventId = own[0]?.externalRef ?? undefined;
+    }
+    try {
+      busy.push(...await microsoftBusyIntervals(creds, fromUtc, toUtc, excludeEventId));
+    } catch (err) {
+      if (err instanceof ConnectorError && err.isAuthError) {
+        await markMicrosoftError(organizationId).catch(() => {});
+      }
+      throw err;
+    }
   }
 
   return filterFreeSlots(candidates, busy, {
