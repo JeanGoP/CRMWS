@@ -71,6 +71,7 @@ const HELP: Record<ExternalConnector, { title: string; items: string[] }> = {
     title: "Crea un proyecto en Google Cloud con la API de Calendar activada",
     items: [
       "Necesitas Client ID, Client Secret y un refresh token con el permiso de eventos de calendario (calendar.events).",
+      "Con Google conectado, los eventos ocupados se descuentan antes de ofrecer y reservar horarios.",
       "IMPORTANTE: publica tu app OAuth «en producción». Si la dejas en modo prueba, Google revoca el permiso a los 7 días y las citas dejarán de crear su enlace sin previo aviso.",
     ],
   },
@@ -173,8 +174,10 @@ export function ConnectorCredentials({
 
         {connection?.status === "error" && (
           <p className="rounded-sm border border-danger-soft bg-danger-tint px-3 py-2 text-sm text-danger-text">
-            {meta.label} rechazó las últimas credenciales. Las citas se siguen
-            agendando, pero sin enlace hasta que vuelvas a conectar.
+            {meta.label} rechazó las últimas credenciales.
+            {connector === "google"
+              ? " No se ofrecerán nuevas citas hasta reconectar el calendario."
+              : " Las citas se siguen agendando, pero sin enlace hasta que vuelvas a conectar."}
           </p>
         )}
 

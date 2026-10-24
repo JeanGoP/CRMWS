@@ -48,13 +48,15 @@ user:read:user            leer tu usuario
 
 ### Google Calendar + Meet (`google`)
 
-Cada cita crea un evento en tu calendario con su enlace de Meet. Su
-diferencial: la cita aparece donde ya miras tu día.
+Antes de ofrecer o reservar, consulta los eventos ocupados de tu calendario
+(también los recurrentes y los de día completo). Cada cita confirmada crea un
+evento con enlace de Meet. Solo se usan identificadores y horas: el CRM no
+guarda títulos ni descripciones de tus eventos existentes.
 
 **Qué necesitas**: un proyecto en Google Cloud **del propio negocio** con la
 API de Calendar activada, y de ahí *Client ID*, *Client Secret* y un *refresh
-token* con el permiso `calendar.events`. El calendario destino es `primary`
-salvo que pongas otro.
+token* con el permiso `calendar.events`. Ese permiso también permite consultar
+los eventos ocupados. El calendario destino es `primary` salvo que pongas otro.
 
 > ⚠️ **Publica tu app OAuth "en producción".** Si la dejas en modo prueba,
 > Google **revoca el refresh token a los 7 días** y tus citas dejarán de generar
@@ -69,6 +71,10 @@ creado y el enlace pendiente — reintentarlo **re-lee ese mismo evento**, nunca
 crea uno duplicado en tu calendario.
 
 ## Qué pasa cuando el proveedor falla
+
+Si Google no responde al consultar disponibilidad, no se ofrecen ni reservan
+nuevas citas: no se puede garantizar que el horario esté libre. Una cita ya
+confirmada en el CRM sigue existiendo.
 
 Nada que te cueste una cita. El orden es deliberado: **primero se escribe la
 verdad en el CRM, después se habla con el proveedor**. Si el proveedor está
@@ -108,10 +114,10 @@ Reglas que hace cumplir el motor, no tú:
 - **Sandbox.** Una cita del Laboratorio nunca llega a un conector: la aserción
   vive antes de elegir cuál. No compruebes `is_test`; no te toca.
 - **Idempotencia.** Borrar algo que ya no está es objetivo cumplido.
-- **Sin free/busy.** El contrato no lee disponibilidad ajena, a propósito: la
-  disponibilidad se calcula local, en una query, y meter al proveedor ahí
-  acoplaría su latencia a la pantalla que más se usa. Si tu fork lo necesita,
-  es una extensión — no un hueco.
+- **Disponibilidad.** El contrato común no exige leer disponibilidad ajena.
+  Google es una extensión concreta: descuenta sus eventos ocupados y falla
+  cerrado si la consulta no se puede completar. Los demás conectores usan
+  citas y bloqueos locales.
 
 ### Los seis archivos que tocas
 

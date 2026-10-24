@@ -13,15 +13,13 @@ import {
   type SlotUtc,
 } from "@/lib/time/slots";
 import { getSettings, type CalendarSettings } from "@/server/agenda/settings";
+import { getGoogleCredentials } from "@/server/agenda/connectors/google-credentials";
+import { googleBusyIntervals } from "@/server/agenda/connectors/google";
 
 /**
  * 015 — Motor de disponibilidad:
- *   horario semanal del negocio − citas activas − bloqueos manuales.
- *
- * Limitación v1 documentada (Constitución VII): NO lee calendarios externos.
- * Es una decisión, no un olvido: meter al proveedor en este camino acoplaría su
- * latencia y sus caídas a la pantalla que más se usa. Los compromisos de fuera
- * se reflejan con bloqueos manuales.
+ *   horario semanal − citas y bloqueos internos − eventos ocupados de Google.
+ * Si Google no responde, falla cerrado: no se ofrecen horarios sin comprobar.
  */
 
 export type AvailableSlot = SlotUtc & { label: string };
@@ -95,13 +93,31 @@ export async function computeAvailability(
   const candidates = buildCandidateSlots(settings, from, to);
   if (candidates.length === 0) return [];
 
+  const fromUtc = zonedWallClockToUtc(from, "00:00", tz) ?? new Date(0);
+  const toUtc =
+    zonedWallClockToUtc(addDaysISO(to, 1), "00:00", tz) ??
+    new Date(now.getTime() + 86_400_000 * 61);
   const busy = await getBusyIntervals(organizationId, {
-    fromUtc: zonedWallClockToUtc(from, "00:00", tz) ?? new Date(0),
-    toUtc:
-      zonedWallClockToUtc(addDaysISO(to, 1), "00:00", tz) ??
-      new Date(now.getTime() + 86_400_000 * 61),
+    fromUtc,
+    toUtc,
     excludeBookingId: opts?.excludeBookingId,
   });
+  if (settings.connector === "google") {
+    const creds = await getGoogleCredentials(organizationId);
+    if (!creds || creds.status !== "connected") {
+      throw new Error("Conecta Google Calendar antes de ofrecer citas");
+    }
+    let excludeEventId: string | undefined;
+    if (opts?.excludeBookingId) {
+      const own = await getDb()
+        .select({ externalRef: schema.booking.externalRef })
+        .from(schema.booking)
+        .where(scoped(schema.booking.organizationId, organizationId, eq(schema.booking.id, opts.excludeBookingId)))
+        .limit(1);
+      excludeEventId = own[0]?.externalRef ?? undefined;
+    }
+    busy.push(...await googleBusyIntervals(creds, fromUtc, toUtc, tz, excludeEventId));
+  }
 
   return filterFreeSlots(candidates, busy, {
     now,

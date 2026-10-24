@@ -228,13 +228,14 @@ Cómo se entrega la reunión lo eliges tú, con un **conector**:
 |---|---|---|
 | **Enlace fijo** (default) | Reparte tu sala de siempre | Nada |
 | **Zoom** | Una reunión por cita; mover la mueve, cancelar la borra | Tu app Server-to-Server |
-| **Google Calendar + Meet** | Un evento en tu calendario con su enlace de Meet | Tu app de Google Cloud |
+| **Google Calendar + Meet** | Descuenta eventos ocupados de Google antes de ofrecer y reservar; crea un evento con Meet al confirmar | Tu app de Google Cloud |
 
 ¿Usas otra cosa? El contrato son cuatro operaciones y está publicado: escribe
 tu conector en tu fork siguiendo
 [`docs/agenda-conectores.md`](docs/agenda-conectores.md). Y si tu proveedor se
-cae, la cita **se agenda igual** con el enlace pendiente de reintentar: un
-tercero caído no te cuesta la conversión.
+cae después de confirmar, la cita queda en el CRM con el enlace pendiente de
+reintentar. Si Google no responde al consultar disponibilidad, la agenda no
+ofrece nuevos horarios hasta poder verificarla.
 
 ### 📈 Conversiones de anuncios (opcional, apagada por defecto)
 
@@ -894,10 +895,9 @@ conclusión:
   la regla es inviolable por construcción y vale igual para Nea, para tu bot y
   para el que venga.
 
-Lo que sigue fuera, y a propósito: **leer calendarios externos** para descontar
-disponibilidad. El motor calcula con lo suyo y los compromisos de fuera se
-reflejan con bloqueos manuales; meter al proveedor en ese camino acoplaría su
-latencia y sus caídas a la pantalla que más se usa.
+Google Calendar conectado también descuenta sus eventos ocupados, incluidos
+los recurrentes y los de día completo. Los demás conectores siguen usando las
+citas y los bloqueos del CRM para calcular disponibilidad.
 
 ## Stack
 

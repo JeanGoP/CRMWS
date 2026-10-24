@@ -53,6 +53,10 @@ declara la operación. Es una decisión, no un hueco: meter al proveedor en el
 camino caliente acoplaría su latencia y sus caídas a la pantalla que más se
 usa. Los compromisos de fuera se reflejan con bloqueos manuales.
 
+**Actualización 053:** el conector Google descuenta sus eventos ocupados al
+ofrecer y al confirmar. Si Google no responde, el cálculo falla cerrado. El
+contrato común de los demás conectores sigue sin exigir esa lectura.
+
 **5. El fallo del proveedor no cuesta la conversión.** Los efectos corren
 después de escribir la verdad del CRM y son best-effort: la cita se crea con
 `link_pending` y el operador reintenta. Sin cola ni cron — el core no tiene

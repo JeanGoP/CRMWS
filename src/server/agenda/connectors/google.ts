@@ -12,6 +12,7 @@ import {
   setCachedGoogleToken,
   type GoogleCreds,
 } from "@/server/agenda/connectors/google-credentials";
+import { zonedWallClockToUtc, type SlotUtc } from "@/lib/time/slots";
 
 /**
  * 015 — Conector Google Calendar + Meet, por REST directo (sin SDK: la
@@ -77,6 +78,7 @@ async function getAccessToken(creds: GoogleCreds): Promise<string> {
   try {
     res = await fetch(`${getEnv().GOOGLE_OAUTH_BASE_URL}/token`, {
       method: "POST",
+      signal: AbortSignal.timeout(10_000),
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         client_id: creds.clientId,
@@ -164,6 +166,69 @@ function meetLinkOf(event: GoogleEvent | null): string | null {
 
 function eventsPath(creds: GoogleCreds, suffix = ""): string {
   return `/calendars/${encodeURIComponent(creds.calendarId)}/events${suffix}`;
+}
+
+/** Solo conserva horas ocupadas: los detalles privados nunca salen del conector. */
+export async function googleBusyIntervals(
+  creds: GoogleCreds,
+  fromUtc: Date,
+  toUtc: Date,
+  timezone: string,
+  excludeEventId?: string
+): Promise<SlotUtc[]> {
+  const busy: SlotUtc[] = [];
+  let pageToken: string | undefined;
+  let pages = 0;
+  do {
+    const params = new URLSearchParams({
+      timeMin: fromUtc.toISOString(),
+      timeMax: toUtc.toISOString(),
+      singleEvents: "true",
+      showDeleted: "false",
+      maxResults: "2500",
+      fields: "nextPageToken,timeZone,items(id,status,transparency,start(date,dateTime),end(date,dateTime))",
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const data = (await googleFetch(
+      creds,
+      eventsPath(creds, `?${params.toString()}`),
+      { signal: AbortSignal.timeout(10_000) }
+    )) as {
+      nextPageToken?: string;
+      timeZone?: string;
+      items?: Array<{
+        id?: string;
+        status?: string;
+        transparency?: string;
+        start?: { date?: string; dateTime?: string };
+        end?: { date?: string; dateTime?: string };
+      }>;
+    };
+    if (!data || (data.items !== undefined && !Array.isArray(data.items))) {
+      throw new ConnectorError("google", "Google no devolvió la disponibilidad del calendario");
+    }
+    const calendarTimezone = data.timeZone ?? timezone;
+    for (const event of data?.items ?? []) {
+      if (event.id === excludeEventId || event.status === "cancelled" || event.transparency === "transparent") continue;
+      const startMs = event.start?.dateTime
+        ? Date.parse(event.start.dateTime)
+        : event.start?.date
+          ? zonedWallClockToUtc(event.start.date, "00:00", calendarTimezone)?.getTime()
+          : undefined;
+      const endMs = event.end?.dateTime
+        ? Date.parse(event.end.dateTime)
+        : event.end?.date
+          ? zonedWallClockToUtc(event.end.date, "00:00", calendarTimezone)?.getTime()
+          : undefined;
+      if (typeof startMs !== "number" || typeof endMs !== "number" || !Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) continue;
+      busy.push({ startUtc: new Date(startMs).toISOString(), endUtc: new Date(endMs).toISOString() });
+    }
+    pageToken = data?.nextPageToken;
+    if (++pages > 20) {
+      throw new ConnectorError("google", "Demasiadas páginas de eventos; no se puede confirmar disponibilidad");
+    }
+  } while (pageToken);
+  return busy;
 }
 
 export const googleConnector: AgendaConnector<GoogleCreds> = {
