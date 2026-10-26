@@ -6,6 +6,7 @@ import { enabledChannels } from "@/server/channels/enabled";
 import { getInstagramCredentialsByOrg } from "@/server/instagram/credentials";
 import { getMessengerCredentialsByOrg } from "@/server/messenger/credentials";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
+import { telegramCredentialsForOrg } from "@/server/telegram/credentials";
 import { webhookVerifyToken } from "@/server/whatsapp/webhook-url";
 import {
   zernioConnectionsOfOrg,
@@ -38,7 +39,7 @@ import {
 export type ChannelStatus = {
   channel: Channel;
   connected: boolean;
-  source: "meta" | "zernio" | null;
+  source: "meta" | "zernio" | "telegram" | null;
   /** La cuenta, el número o la página, como lo reconoce una persona. */
   account: string | null;
   status: "connected" | "reconnect_required" | null;
@@ -109,12 +110,13 @@ function saludDe(conn: ZernioConnection, lectura: Lectura): ChannelStatus["healt
 
 export async function channelsStatus(organizationId: string): Promise<ChannelStatus[]> {
   const encendidos = enabledChannels();
-  const [ultimos, wa, ig, fb, zernio] = await Promise.all([
+  const [ultimos, wa, ig, fb, zernio, telegram] = await Promise.all([
     lastInboundByChannel(organizationId),
     getCredentialsByOrg(organizationId),
     encendidos.has("instagram") ? getInstagramCredentialsByOrg(organizationId) : null,
     encendidos.has("messenger") ? getMessengerCredentialsByOrg(organizationId) : null,
     zernioConnectionsOfOrg(organizationId),
+    encendidos.has("telegram") ? telegramCredentialsForOrg(organizationId) : null,
   ]);
 
   // Una lectura por llave, no por canal: lo normal es que los tres compartan una.
@@ -137,6 +139,14 @@ export async function channelsStatus(organizationId: string): Promise<ChannelSta
         status: wa?.status ?? null,
         health: null,
       });
+      continue;
+    }
+
+    if (channel === "telegram") {
+      filas.push({ ...base, connected: Boolean(telegram),
+        source: telegram ? "telegram" : null,
+        account: telegram ? `@${telegram.username}` : null,
+        status: telegram?.status ?? null, health: null });
       continue;
     }
 

@@ -85,6 +85,7 @@ describe("a qué organización va cada evento", () => {
     porIgUserId: org("IG1"),
     porPageId: org("PAGE1"),
     porCuentaZernio: async () => ({ organizationId: "org_z" }),
+    porTelegramBot: org("BOT1"),
   };
 
   it("WhatsApp por phone_number_id, y por WABA para los estados de plantillas", async () => {
@@ -109,6 +110,7 @@ describe("a qué organización va cada evento", () => {
     };
     expect(await real("meta_messenger", pagina, b)).toBe("org_a");
     expect(await real("zernio", { account: { id: "acc" } }, b)).toBe("org_z");
+    expect(await real("telegram", { botId: "BOT1", update: {} }, b)).toBe("org_a");
     expect(await real("meta_instagram", { entry: [{ id: "otro" }] }, b)).toBeNull();
   });
 });

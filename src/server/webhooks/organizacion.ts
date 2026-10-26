@@ -10,6 +10,7 @@ import { zernioTargetChannel } from "@/server/zernio/dispatch";
 import { findZernioConnection } from "@/server/zernio/conexiones";
 import type { ZernioEvent } from "@/server/zernio";
 import type { FuenteWebhook } from "./eventos";
+import { telegramCredentialsForBot } from "@/server/telegram/credentials";
 
 /**
  * 047 — A qué organización va un evento, resuelto ANTES de guardarlo
@@ -27,6 +28,7 @@ export type Buscadores = {
   porIgUserId: (id: string) => Promise<{ organizationId: string } | null>;
   porPageId: (id: string) => Promise<{ organizationId: string } | null>;
   porCuentaZernio: (evt: ZernioEvent) => Promise<{ organizationId: string } | null>;
+  porTelegramBot: (id: string) => Promise<{ organizationId: string } | null>;
 };
 
 const buscadoresReales: Buscadores = {
@@ -40,6 +42,7 @@ const buscadoresReales: Buscadores = {
     const found = await findZernioConnection(canal, evt.account);
     return found ? { organizationId: found.connection.organizationId } : null;
   },
+  porTelegramBot: telegramCredentialsForBot,
 };
 
 /** La primera organización que se resuelva: una entrega trae una sola cuenta. */
@@ -82,5 +85,7 @@ export async function resolverOrganizacion(
       const found = await b.porCuentaZernio(payload as ZernioEvent);
       return found?.organizationId ?? null;
     }
+    case "telegram":
+      return primera([(payload as { botId?: string }).botId], b.porTelegramBot);
   }
 }

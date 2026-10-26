@@ -60,7 +60,7 @@ function evento(over: Record<string, unknown> = {}) {
 describe("022 · TikTok en el catálogo de canales", () => {
   it("existe, va al final, se enciende con CHANNELS y tiene nombre y distintivo", () => {
     expect(isChannel("tiktok")).toBe(true);
-    expect(CHANNEL_ORDER.at(-1)).toBe("tiktok");
+    expect(CHANNEL_ORDER.indexOf("tiktok")).toBeGreaterThan(CHANNEL_ORDER.indexOf("messenger"));
     expect(CHANNEL_LABEL.tiktok).toBe("TikTok");
     expect(parseChannels("whatsapp,tiktok").has("tiktok")).toBe(true);
     expect(parseChannels("whatsapp,instagram,messenger").has("tiktok")).toBe(false);

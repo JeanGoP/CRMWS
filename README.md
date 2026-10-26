@@ -557,15 +557,15 @@ del cliente se conecta con el **override de callback por WABA**:
 > Graph** (botón "Sincronizar" en Configuración → Plantillas), así el modo
 > agencia ve las aprobaciones igual.
 
-## Canales opcionales: Instagram, Messenger y TikTok
+## Canales opcionales: Instagram, Messenger, TikTok y Telegram
 
-WhatsApp es el canal por el que existe Vocero y siempre está encendido. Los
-demás viajan en el mismo código, **apagados por defecto** ([ADR-001](docs/adr-001-canales-opcionales.md)):
+WhatsApp viene disponible en toda instalación. Los demás canales viajan en el
+mismo código, **apagados por defecto** ([ADR-001](docs/adr-001-canales-opcionales.md)):
 una instancia que no los usa no ve pantallas, webhooks ni variables suyas.
 Se encienden con una variable de despliegue:
 
 ```bash
-CHANNELS=whatsapp,instagram,messenger,tiktok   # los que quieras; whatsapp siempre va
+CHANNELS=whatsapp,telegram                     # o combina con instagram,messenger,tiktok
 ```
 
 Con más de un canal encendido, la Bandeja enseña el distintivo de cada
@@ -580,6 +580,24 @@ texto llega sin asteriscos, con viñetas y con los enlaces legibles.
 conectados, cuándo entró el último mensaje de un cliente y, para los que
 llegan por Zernio, cómo están la cuenta y el webhook. Es el primer sitio que
 mirar cuando «no me llegan los mensajes».
+
+### Elegir WhatsApp, Telegram o ambos para una empresa
+
+Habilita `telegram` en `CHANNELS` una vez para ofrecerlo en la instalación.
+Después, cada propietario elige en **Ajustes → Canales** qué canales usa su
+empresa: WhatsApp, Telegram o ambos. La elección inicial conserva WhatsApp
+activo y Telegram apagado, así que la actualización no cambia los mensajes de
+las empresas existentes. No se permite apagar los dos.
+
+Para conectar Telegram, crea un bot con [BotFather](https://t.me/BotFather),
+copia su token y pégalo en **Ajustes → Telegram**. Hilora comprueba el bot,
+registra su webhook HTTPS y guarda el token cifrado; después puedes encender
+Telegram en **Ajustes → Canales**. Cada empresa necesita su propio bot. El bot
+recibe chats privados iniciados por el cliente; las conversaciones aparecen en
+la bandeja y las pueden responder el equipo o Nea. En esta primera versión
+entran y salen mensajes de texto; las fotos y otros adjuntos no se procesan.
+No se puede iniciar una conversación nueva desde Hilora: el cliente debe
+escribirle al bot primero.
 
 ### Conectar por Zernio (Instagram, Messenger o TikTok)
 

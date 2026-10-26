@@ -60,6 +60,9 @@ vi.mock("@/server/inbox/lead-activity", () => ({
   onLeadActivity: vi.fn(async () => {}),
 }));
 vi.mock("@/server/brains/config", () => ({ despachoActivo: () => false }));
+vi.mock("@/server/channels/preference", () => ({
+  isChannelActiveForOrg: vi.fn(async () => true),
+}));
 vi.mock("@/server/dispatch/encolar", () => ({
   despacharAlCerebro: vi.fn(async () => {}),
 }));

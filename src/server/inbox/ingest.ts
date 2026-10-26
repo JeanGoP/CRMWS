@@ -26,6 +26,7 @@ import { registrarAnuncioDeOrigen } from "@/server/attribution/store";
 import { onLeadActivity } from "@/server/inbox/lead-activity";
 import { despachoActivo } from "@/server/brains/config";
 import { despacharAlCerebro } from "@/server/dispatch/encolar";
+import { isChannelActiveForOrg } from "@/server/channels/preference";
 import {
   aCitaDto,
   citaDelWebhook,
@@ -281,6 +282,7 @@ export async function processMessagesValue(value: WebhookValue): Promise<void> {
   }
 
   const organizationId = credentials.organizationId;
+  if (!(await isChannelActiveForOrg("whatsapp", organizationId))) return;
 
   for (const status of value.statuses ?? []) {
     await applyStatusUpdate(organizationId, status);

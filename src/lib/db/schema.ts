@@ -129,7 +129,7 @@ export const contact = pgTable(
      * 014: canal por el que vive este contacto. Aditivo y con default: toda
      * fila existente sigue significando exactamente lo mismo.
      */
-    channel: text("channel", { enum: ["whatsapp", "instagram", "messenger", "tiktok"] })
+    channel: text("channel", { enum: ["whatsapp", "instagram", "messenger", "tiktok", "telegram"] })
       .notNull()
       .default("whatsapp"),
     /**
@@ -364,7 +364,7 @@ export const conversation = pgTable(
      * 014: canal de la conversacion. Denormalizado del contacto a proposito:
      * el ruteo de salida y el filtro de la bandeja lo leen en cada mensaje.
      */
-    channel: text("channel", { enum: ["whatsapp", "instagram", "messenger", "tiktok"] })
+    channel: text("channel", { enum: ["whatsapp", "instagram", "messenger", "tiktok", "telegram"] })
       .notNull()
       .default("whatsapp"),
     /**
@@ -673,6 +673,41 @@ export const tiktokCredentials = pgTable(
     uniqueIndex("tiktok_credentials_org_uq").on(t.organizationId),
     uniqueIndex("tiktok_credentials_account_ref_uq").on(t.accountRef),
   ]
+);
+
+/** Token y firma del webhook del bot de Telegram, propios de cada negocio. */
+export const telegramCredentials = pgTable(
+  "telegram_credentials",
+  {
+    id: text("id").primaryKey(),
+    organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
+    botId: text("bot_id").notNull(),
+    username: text("username").notNull(),
+    tokenCipher: text("token_cipher").notNull(),
+    tokenIv: text("token_iv").notNull(),
+    tokenTag: text("token_tag").notNull(),
+    webhookSecretCipher: text("webhook_secret_cipher").notNull(),
+    webhookSecretIv: text("webhook_secret_iv").notNull(),
+    webhookSecretTag: text("webhook_secret_tag").notNull(),
+    status: text("status", { enum: ["connected", "reconnect_required"] }).notNull().default("connected"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("telegram_credentials_org_uq").on(t.organizationId),
+    uniqueIndex("telegram_credentials_bot_uq").on(t.botId),
+  ]
+);
+
+/** Elección de canales del dueño. Una instancia antigua sigue usando WhatsApp. */
+export const channelPreference = pgTable(
+  "channel_preference",
+  {
+    organizationId: text("organization_id").primaryKey().references(() => organization.id, { onDelete: "cascade" }),
+    whatsappEnabled: boolean("whatsapp_enabled").notNull().default(true),
+    telegramEnabled: boolean("telegram_enabled").notNull().default(false),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  }
 );
 
 export const agentProfile = pgTable(
@@ -1329,7 +1364,7 @@ export const webhookEvent = pgTable(
       .references(() => organization.id, { onDelete: "cascade" }),
     /** Quién lo procesa: el adaptador del canal y la fuente. */
     fuente: text("fuente", {
-      enum: ["whatsapp", "meta_instagram", "meta_messenger", "zernio"],
+      enum: ["whatsapp", "meta_instagram", "meta_messenger", "zernio", "telegram"],
     }).notNull(),
     payload: jsonb("payload").notNull(),
     /** SHA-256 del cuerpo crudo: la misma entrega dos veces es una fila. */

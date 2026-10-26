@@ -32,7 +32,7 @@ type Health = { level: Level; message: string };
 type Row = {
   channel: Channel;
   connected: boolean;
-  source: "meta" | "zernio" | null;
+  source: "meta" | "zernio" | "telegram" | null;
   account: string | null;
   status: "connected" | "reconnect_required" | null;
   lastInboundAt: string | null;
@@ -47,6 +47,7 @@ const SETTINGS_HREF: Record<Channel, string> = {
   instagram: "/settings/instagram",
   messenger: "/settings/messenger",
   tiktok: "/settings/tiktok",
+  telegram: "/settings/telegram",
 };
 
 const DOT: Record<Level, string> = {
@@ -78,15 +79,19 @@ export function ChannelsClient() {
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
   const [webhookUrl, setWebhookUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [preference, setPreference] = useState<{ whatsapp: boolean; telegram: boolean } | null>(null);
+  const [preferenceNotice, setPreferenceNotice] = useState<string | null>(null);
+  const [savingPreference, setSavingPreference] = useState(false);
   // La hora se fija al cargar: leer el reloj durante el render hace que el
   // servidor y el navegador pinten textos distintos.
   const [now, setNow] = useState(0);
 
   const refetch = useCallback(async () => {
     setLoading(true);
-    const data = await fetch("/api/settings/channels")
-      .then((r) => (r.ok ? r.json() : null))
-      .catch(() => null);
+    const [data, prefs] = await Promise.all([
+      fetch("/api/settings/channels").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetch("/api/settings/channel-preference").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]);
     setLoading(false);
     setNow(Date.now());
     if (!data) {
@@ -96,6 +101,7 @@ export function ChannelsClient() {
     setFailed(false);
     setRows(data.channels);
     setCanManage(Boolean(data.canManage));
+    if (prefs?.preference) setPreference(prefs.preference);
   }, []);
 
   useEffect(() => {
@@ -145,6 +151,20 @@ export function ChannelsClient() {
     void refetch();
   }
 
+  async function savePreference() {
+    if (!preference) return;
+    setSavingPreference(true);
+    setPreferenceNotice(null);
+    const response = await fetch("/api/settings/channel-preference", {
+      method: "PUT", headers: { "content-type": "application/json" },
+      body: JSON.stringify(preference),
+    }).catch(() => null);
+    const data = await response?.json().catch(() => null);
+    setSavingPreference(false);
+    setPreferenceNotice(response?.ok ? "Elección guardada" : data?.error?.message ?? "No se pudo guardar");
+    if (!response?.ok) void refetch();
+  }
+
   if (!rows) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -158,6 +178,27 @@ export function ChannelsClient() {
 
   return (
     <div className="max-w-3xl space-y-6">
+      {rows.some((r) => r.channel === "telegram") && preference && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Canales que atiende esta empresa</CardTitle>
+            <CardDescription>Elige WhatsApp, Telegram o ambos. Desactivar un canal conserva su conexión y su historial.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(["whatsapp", "telegram"] as const).map((channel) => (
+              <label key={channel} className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={preference[channel]} disabled={!canManage}
+                  onChange={(event) => setPreference({ ...preference, [channel]: event.target.checked })} />
+                {CHANNEL_LABEL[channel]}
+              </label>
+            ))}
+            <Button disabled={!canManage || savingPreference} onClick={() => void savePreference()}>
+              {savingPreference ? "Guardando…" : "Guardar elección"}
+            </Button>
+            {preferenceNotice && <p className="text-sm text-text-2">{preferenceNotice}</p>}
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardHeader className="flex-row items-start justify-between gap-4 space-y-0">
           <div className="space-y-1.5">
@@ -202,7 +243,7 @@ export function ChannelsClient() {
                     {r.channel !== "whatsapp" && (
                       <span className="text-text-2">
                         {" "}
-                        · {r.source === "zernio" ? "por Zernio" : "app propia de Meta"}
+                        · {r.source === "zernio" ? "por Zernio" : r.source === "telegram" ? "bot de Telegram" : "app propia de Meta"}
                       </span>
                     )}
                   </dd>

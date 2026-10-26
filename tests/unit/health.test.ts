@@ -74,7 +74,7 @@ describe("features: las banderas de despliegue", () => {
     // Mismos parsers que usan las rutas para responder 404: si aquí dijera
     // `true` y la agenda respondiera 404, el health mentiría.
     expect(
-      healthFeatures({ AGENDA: "onn", CHANNELS: "telegram", ATRIBUCION: "off" })
+      healthFeatures({ AGENDA: "onn", CHANNELS: "desconocido", ATRIBUCION: "off" })
     ).toEqual({ agenda: false, channels: ["whatsapp"], atribucion: false, media: "disco" });
   });
 });

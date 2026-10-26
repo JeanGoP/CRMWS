@@ -26,6 +26,10 @@ import {
 } from "@/server/messenger/credentials";
 import { sendMessengerText } from "@/server/messenger/send";
 import { TT_PREFIX } from "@/server/inbox/identity";
+import { TG_PREFIX } from "@/server/inbox/identity";
+import { isChannelActiveForOrg } from "@/server/channels/preference";
+import { telegramCredentialsForOrg, markTelegramReconnectRequired, type TelegramCredentials } from "@/server/telegram/credentials";
+import { sendTelegramText, TelegramApiError } from "@/server/telegram/client";
 import {
   getTiktokCredentialsByOrg,
   markTiktokReconnectRequired,
@@ -97,6 +101,7 @@ type SendTarget = {
   messenger?: MessengerCredentials;
   /** 022: presente solo en conversaciones de TikTok. */
   tiktok?: TiktokCredentials;
+  telegram?: TelegramCredentials;
   /**
    * 024: el envío sale con la etiqueta de agente humano. Lo decide el
    * pre-vuelo (`assertReplyWindow`), no cada canal por su cuenta.
@@ -292,6 +297,26 @@ async function prepareSend(
       recipient: ttRecipient,
       tiktok: ttCreds,
     };
+  }
+
+  if (row.conversation.channel === "telegram") {
+    if (!(await isChannelActiveForOrg("telegram", organizationId))) {
+      throw new SendError("not_connected", "Telegram está desactivado para esta empresa");
+    }
+    const tg = await telegramCredentialsForOrg(organizationId);
+    if (!tg || tg.status !== "connected") {
+      throw new SendError("not_connected", "Conecta de nuevo el bot de Telegram en Ajustes → Canales");
+    }
+    if (!row.contact.waIdentity.startsWith(`${TG_PREFIX}${tg.botId}:`)) {
+      throw new SendError("not_connected", "Esta conversación pertenece a otro bot de Telegram");
+    }
+    const recipient = row.contact.waIdentity.slice(`${TG_PREFIX}${tg.botId}:`.length);
+    return { conversation: row.conversation, credentials: null,
+      destinatario: { to: recipient }, recipient, telegram: tg };
+  }
+
+  if (!(await isChannelActiveForOrg("whatsapp", organizationId))) {
+    throw new SendError("not_connected", "WhatsApp está desactivado para esta empresa");
   }
 
   // El nucleo no decide la politica: la consulta. WhatsApp exige plantilla
@@ -496,6 +521,8 @@ export async function sendText(input: {
       ? await callMessengerSend(target, text)
       : target.tiktok
         ? await callTiktokSend(target, text)
+        : target.telegram
+          ? await callTelegramSend(target, text)
         : await callGraphSend(
           credentials!,
           conCita(
@@ -527,6 +554,23 @@ export async function sendText(input: {
   });
 
   return { messageId };
+}
+
+async function callTelegramSend(target: SendTarget, text: string): Promise<string> {
+  try {
+    const id = await sendTelegramText(target.telegram!.token, target.recipient, text);
+    return `tg_${target.telegram!.botId}_${target.recipient}_${id}`;
+  } catch (err) {
+    if (err instanceof TelegramApiError) {
+      if (err.status === 401) {
+        await markTelegramReconnectRequired(target.telegram!.organizationId);
+        throw new SendError("reconnect_required", "Telegram rechazó el token: reconecta el bot en Ajustes");
+      }
+      throw new SendError(err.status === 403 ? "meta_error" : "meta_unavailable",
+        err.status === 403 ? "Este contacto bloqueó al bot de Telegram" : "Telegram no pudo enviar el mensaje; intenta de nuevo");
+    }
+    throw err;
+  }
 }
 
 /**

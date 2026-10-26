@@ -22,6 +22,8 @@ export const IG_PREFIX = "ig:";
 export const FB_PREFIX = "fb:";
 /** 022: identidad de TikTok: el id del remitente que entrega Zernio. */
 export const TT_PREFIX = "tt:";
+/** Bot + chat privado de Telegram; distinto de cualquier identidad Meta. */
+export const TG_PREFIX = "tg:";
 
 // El tipo vive en lib/ porque la interfaz tambien lo necesita; se reexporta
 // aqui para no tocar a quien ya lo importaba de este modulo.
@@ -120,7 +122,8 @@ export function parseIdentity(identity: string): ResolvedIdentity | null {
   if (
     identity.startsWith(IG_PREFIX) ||
     identity.startsWith(FB_PREFIX) ||
-    identity.startsWith(TT_PREFIX)
+    identity.startsWith(TT_PREFIX) ||
+    identity.startsWith(TG_PREFIX)
   ) {
     return null;
   }

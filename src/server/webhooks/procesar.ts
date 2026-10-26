@@ -6,6 +6,7 @@ import { processMetaPagePayload } from "@/server/messenger/ingest";
 import { processZernioPayload } from "@/server/zernio/dispatch";
 import { lanzarFalloDePrueba } from "@/server/dev/webhook-fallo";
 import type { FuenteWebhook } from "./eventos";
+import { processTelegramUpdate } from "@/server/telegram/ingest";
 
 /**
  * 047 — Quién procesa cada evento guardado. Antes cada ruta llamaba a su
@@ -31,6 +32,8 @@ export async function procesarFuente(
       return processMetaPagePayload(payload);
     case "zernio":
       return processZernioPayload(payload);
+    case "telegram":
+      return processTelegramUpdate(payload);
   }
 }
 

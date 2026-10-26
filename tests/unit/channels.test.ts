@@ -16,19 +16,19 @@ describe("CHANNELS: qué bandejas enciende la instancia (ADR-001)", () => {
     expect(on.has("whatsapp")).toBe(true);
   });
 
-  it("WhatsApp no se puede apagar: es el canal por el que existe el producto", () => {
+  it("WhatsApp está disponible por defecto; cada empresa puede pausarlo en Ajustes", () => {
     expect(parseChannels("instagram").has("whatsapp")).toBe(true);
   });
 
   it("un canal que no existe se ignora, no tumba el arranque", () => {
-    const on = parseChannels("telegram,instagram,,");
+    const on = parseChannels("desconocido,instagram,,");
     expect([...on].sort()).toEqual(["instagram", "whatsapp"]);
   });
 
   it("isChannel es la única lista: no hay uniones sueltas por ahí", () => {
     expect(isChannel("whatsapp")).toBe(true);
     expect(isChannel("instagram")).toBe(true);
-    expect(isChannel("telegram")).toBe(false);
+    expect(isChannel("telegram")).toBe(true);
     expect(isChannel("")).toBe(false);
   });
 });
@@ -41,7 +41,7 @@ describe("capacidades por canal", () => {
   });
 
   it("un canal desconocido cae en WhatsApp en vez de reventar", () => {
-    const caps = capabilitiesFor("telegram" as never);
+    const caps = capabilitiesFor("desconocido" as never);
     expect(caps.label).toBe(CHANNEL_LABEL.whatsapp);
   });
 
@@ -73,6 +73,6 @@ describe("distintivo de bandeja", () => {
   });
 
   it("un canal desconocido no pinta nada en vez de tumbar la lista", () => {
-    expect(channelMark("telegram" as never)).toBeNull();
+    expect(channelMark("desconocido" as never)).toBeNull();
   });
 });
