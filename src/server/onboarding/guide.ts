@@ -58,6 +58,8 @@ export function guideFrom(status: OnboardingStatus): Guide {
   const profile = step("profile");
   const ai = step("ai");
   const whatsapp = step("whatsapp");
+  const onlyTelegram = whatsapp?.label === "Telegram";
+  const bothChannels = whatsapp?.label === "WhatsApp y Telegram";
   const calendar = step("calendar");
   const brain = step("brain");
 
@@ -84,12 +86,15 @@ export function guideFrom(status: OnboardingStatus): Guide {
     },
     {
       key: "whatsapp",
-      title: "Vincula tu número de WhatsApp",
-      description:
-        "Conecta el número donde te escriben tus clientes. El CRM registra el webhook en Meta por ti al guardar.",
+      title: onlyTelegram ? "Conecta Telegram" : bothChannels ? "Conecta tus canales" : "Vincula tu número de WhatsApp",
+      description: onlyTelegram
+        ? "Conecta el bot de Telegram para recibir conversaciones en la Bandeja."
+        : bothChannels
+          ? "Conecta WhatsApp y Telegram para atender desde ambos canales."
+          : "Conecta el número donde te escriben tus clientes. El CRM registra el webhook en Meta por ti al guardar.",
       done: ready(whatsapp),
-      href: "/settings/whatsapp",
-      cta: "Conectar WhatsApp",
+      href: whatsapp?.href ?? "/settings/whatsapp",
+      cta: onlyTelegram ? "Conectar Telegram" : bothChannels ? "Revisar canales" : "Conectar WhatsApp",
       hint: whatsapp?.problem ?? null,
     },
     {

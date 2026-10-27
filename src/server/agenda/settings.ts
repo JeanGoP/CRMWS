@@ -1,6 +1,9 @@
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
+import { eq } from "drizzle-orm";
+import { countVariables } from "@/lib/templates";
+import { channelPreferenceFor } from "@/server/channels/preference";
 import {
   DEFAULT_CONNECTOR,
   isConnectorId,
@@ -43,6 +46,9 @@ export type CalendarSettings = {
   connector: ConnectorId;
   /** Sala fija del conector `enlace-fijo`; null ⇒ citas sin link. */
   meetingLink: string | null;
+  privacyNoticeUrl: string | null;
+  reminderEnabled: boolean;
+  reminderTemplateId: string | null;
 };
 
 /** Lo que ve una instancia recién encendida: útil sin configurar nada. */
@@ -55,6 +61,9 @@ export const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
   timezone: DEFAULT_TIMEZONE,
   connector: DEFAULT_CONNECTOR,
   meetingLink: null,
+  privacyNoticeUrl: null,
+  reminderEnabled: false,
+  reminderTemplateId: null,
 };
 
 export const LIMITS = {
@@ -89,6 +98,9 @@ export async function getSettings(
     // puede dejar la agenda inservible: se degrada al soberano.
     connector: isConnectorId(row.connector) ? row.connector : DEFAULT_CONNECTOR,
     meetingLink: row.meetingLink,
+    privacyNoticeUrl: row.privacyNoticeUrl,
+    reminderEnabled: row.reminderEnabled,
+    reminderTemplateId: row.reminderTemplateId,
   };
 }
 
@@ -158,7 +170,34 @@ export async function upsertSettings(
     meetingLink: normalizeLink(
       input.meetingLink !== undefined ? input.meetingLink : current.meetingLink
     ),
+    privacyNoticeUrl: normalizeLink(
+      input.privacyNoticeUrl !== undefined ? input.privacyNoticeUrl : current.privacyNoticeUrl
+    ),
+    reminderEnabled: input.reminderEnabled ?? current.reminderEnabled,
+    reminderTemplateId: normalizeLink(
+      input.reminderTemplateId !== undefined ? input.reminderTemplateId : current.reminderTemplateId
+    ),
   };
+  if (next.privacyNoticeUrl && !/^https:\/\/[^\s]+$/i.test(next.privacyNoticeUrl)) {
+    throw new CalendarSettingsError("El aviso de datos debe tener una dirección HTTPS válida");
+  }
+  if (next.reminderEnabled) {
+    if (!next.privacyNoticeUrl) {
+      throw new CalendarSettingsError("Agrega el enlace al aviso de tratamiento de datos antes de activar recordatorios");
+    }
+    const channels = await channelPreferenceFor(organizationId);
+    if (channels.whatsapp) {
+      const [template] = next.reminderTemplateId
+        ? await getDb().select({ status: schema.template.status, body: schema.template.body, category: schema.template.category })
+            .from(schema.template)
+            .where(scoped(schema.template.organizationId, organizationId, eq(schema.template.id, next.reminderTemplateId)))
+            .limit(1)
+        : [undefined];
+      if (!template || template.status !== "approved" || template.category !== "UTILITY" || countVariables(template.body) !== 3) {
+        throw new CalendarSettingsError("Selecciona una plantilla de utilidad aprobada con {{1}} nombre, {{2}} fecha y {{3}} hora");
+      }
+    }
+  }
 
   const db = getDb();
   const values = {
@@ -170,6 +209,9 @@ export async function upsertSettings(
     timezone: next.timezone,
     connector: next.connector,
     meetingLink: next.meetingLink,
+    privacyNoticeUrl: next.privacyNoticeUrl,
+    reminderEnabled: next.reminderEnabled,
+    reminderTemplateId: next.reminderTemplateId,
   };
   await db
     .insert(schema.calendarSettings)

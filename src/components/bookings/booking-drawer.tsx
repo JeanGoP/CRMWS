@@ -158,6 +158,8 @@ export function BookingDrawer({
               )}
               {b.isTest && <Badge variant="secondary">Prueba del Laboratorio</Badge>}
               {canRetrySync(b) && <Badge variant="warning">Sin enlace</Badge>}
+              {b.reminderSentAt && <Badge variant="success">Recordatorio enviado</Badge>}
+              {b.reminderError && b.status === "agendada" && <Badge variant="warning">Recordatorio no enviado</Badge>}
             </div>
 
             {active && endMs < nowMs && isSession && (
@@ -165,6 +167,9 @@ export function BookingDrawer({
                 La hora ya pasó: márcala como realizada o como que no asistió.
               </p>
             )}
+            {b.reminderError && b.status === "agendada" && <p className="rounded-sm bg-warning-tint px-3 py-2 text-xs text-warning-text">
+              El recordatorio no salió: {b.reminderError}. Contacta al paciente desde la Bandeja.
+            </p>}
           </section>
 
           {/* Con quién y dónde (la nota de un bloqueo ya es su título) */}

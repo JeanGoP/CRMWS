@@ -26,6 +26,8 @@ export type BookingListItem = {
   linkPending: boolean;
   isTest: boolean;
   notes: string | null;
+  reminderSentAt: string | null;
+  reminderError: string | null;
 };
 
 /** Tope del listado sin rango: el de siempre, que leen los guiones E2E. */
@@ -138,5 +140,7 @@ function toListItem(r: Row, timezone: string): BookingListItem {
     linkPending: r.booking.linkPending,
     isTest: r.booking.isTest,
     notes: r.booking.notes,
+    reminderSentAt: r.booking.reminderSentAt?.toISOString() ?? null,
+    reminderError: r.booking.reminderError,
   };
 }

@@ -838,6 +838,11 @@ export const calendarSettings = pgTable(
     connector: text("connector").notNull().default("enlace-fijo"),
     /** Sala fija del conector `enlace-fijo`; null ⇒ citas sin link. */
     meetingLink: text("meeting_link"),
+    /** El aviso aprobado por el negocio; nunca se inventa por defecto. */
+    privacyNoticeUrl: text("privacy_notice_url"),
+    /** Los recordatorios se activan solo después de configurar el canal. */
+    reminderEnabled: boolean("reminder_enabled").notNull().default(false),
+    reminderTemplateId: text("reminder_template_id"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -898,6 +903,10 @@ export const booking = pgTable(
     /** Conversación del Laboratorio: jamás llama a un conector real. */
     isTest: boolean("is_test").notNull().default(false),
     notes: text("notes"),
+    /** Reclamo previo al envío: impide avisos duplicados en reintentos. */
+    reminderAttemptedAt: timestamp("reminder_attempted_at"),
+    reminderSentAt: timestamp("reminder_sent_at"),
+    reminderError: text("reminder_error"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

@@ -313,7 +313,8 @@ export async function rescheduleBooking(input: {
   try {
     const updated = await db
       .update(schema.booking)
-      .set({ scheduledAt: new Date(slot.startUtc), updatedAt: new Date() })
+      .set({ scheduledAt: new Date(slot.startUtc), reminderAttemptedAt: null,
+        reminderSentAt: null, reminderError: null, updatedAt: new Date() })
       .where(eq(schema.booking.id, booking.id))
       .returning();
     next = updated[0]!;

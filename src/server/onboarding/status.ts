@@ -5,6 +5,7 @@ import { agendaEnabled } from "@/server/agenda/flag";
 import { verifyCalendar } from "./calendar-verifiers";
 import { leerConfigDespacho, urlSaludCerebro } from "@/server/brains/config";
 import { getBrainHealth } from "@/server/bot/status";
+import { channelPreferenceFor } from "@/server/channels/preference";
 
 /**
  * Qué le falta a esta instancia para que el agente conteste (issue #86).
@@ -74,6 +75,22 @@ export async function onboardingStatus(
     .from(schema.metaCredentials)
     .where(scoped(schema.metaCredentials.organizationId, organizationId))
     .limit(1);
+  const preference = await channelPreferenceFor(organizationId);
+  const [telegram] = preference.telegram
+    ? await db.select({ status: schema.telegramCredentials.status })
+        .from(schema.telegramCredentials)
+        .where(scoped(schema.telegramCredentials.organizationId, organizationId))
+        .limit(1)
+    : [undefined];
+  const whatsappReady = channel?.status === "connected";
+  const telegramReady = telegram?.status === "connected";
+  const channelsReady =
+    (preference.whatsapp || preference.telegram) &&
+    (!preference.whatsapp || whatsappReady) &&
+    (!preference.telegram || telegramReady);
+  const selectedChannels = preference.whatsapp && preference.telegram
+    ? "WhatsApp y Telegram"
+    : preference.telegram ? "Telegram" : "WhatsApp";
   const ia = await estadoIaDe(organizationId);
 
   const steps: ReadinessStep[] = [
@@ -97,19 +114,19 @@ export async function onboardingStatus(
     },
     {
       key: "whatsapp",
-      label: "WhatsApp",
-      status: channel?.status === "connected" ? "ready" : "pending",
+      label: selectedChannels,
+      status: channelsReady ? "ready" : "pending",
       nextAction:
-        channel?.status === "connected"
-          ? "Número conectado"
-          : channel
-            ? "Vuelve a conectar el número con un token vigente"
-            : "Vincular tu número",
-      href: "/settings/whatsapp",
+        channelsReady
+          ? `${selectedChannels} conectado${preference.whatsapp && preference.telegram ? "s" : ""}`
+          : `Conecta los canales elegidos en Ajustes → Canales`,
+      href: preference.telegram ? "/settings/channels" : "/settings/whatsapp",
       problem:
-        channel?.status === "reconnect_required"
+        preference.whatsapp && channel?.status === "reconnect_required"
           ? "Meta dejó de aceptar el token de WhatsApp: vuelve a conectar el número."
-          : null,
+          : preference.telegram && telegram?.status === "reconnect_required"
+            ? "Telegram rechazó el token del bot: vuelve a conectarlo."
+            : null,
     },
     await pasoCerebro(),
   ];

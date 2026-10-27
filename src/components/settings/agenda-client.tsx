@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,6 +19,7 @@ import {
   type ConnectorId,
 } from "@/lib/agenda-connectors";
 import { ConnectorCredentials } from "@/components/settings/connector-credentials";
+import { countVariables } from "@/lib/templates";
 
 /**
  * 015 — Ajustes → Agenda: cuándo atiende el negocio y cómo se entrega la
@@ -37,7 +39,12 @@ type Settings = {
   timezone: string;
   connector: ConnectorId;
   meetingLink: string | null;
+  privacyNoticeUrl: string | null;
+  reminderEnabled: boolean;
+  reminderTemplateId: string | null;
 };
+
+type ReminderTemplate = { id: string; name: string; body: string; status: string; category: string };
 
 const DAYS: { key: DayKey; label: string }[] = [
   { key: "mon", label: "Lunes" },
@@ -57,6 +64,8 @@ export function AgendaClient() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [templates, setTemplates] = useState<ReminderTemplate[]>([]);
+  const [whatsappActive, setWhatsappActive] = useState(true);
 
   useEffect(() => {
     void (async () => {
@@ -73,6 +82,16 @@ export function AgendaClient() {
         setSlots(data.slots.slice(0, 5));
       } else {
         setSlots([]);
+      }
+      const templateRes = await fetch("/api/templates").catch(() => null);
+      if (templateRes?.ok) {
+        const data = (await templateRes.json()) as { templates: ReminderTemplate[] };
+        setTemplates(data.templates.filter((t) => t.status === "approved" && t.category === "UTILITY" && countVariables(t.body) === 3));
+      }
+      const channelRes = await fetch("/api/settings/channel-preference").catch(() => null);
+      if (channelRes?.ok) {
+        const data = (await channelRes.json()) as { preference: { whatsapp: boolean } };
+        setWhatsappActive(data.preference.whatsapp);
       }
     })();
   }, []);
@@ -144,6 +163,9 @@ export function AgendaClient() {
         meetingLink: settings.meetingLink?.trim()
           ? settings.meetingLink.trim()
           : null,
+        privacyNoticeUrl: settings.privacyNoticeUrl?.trim() || null,
+        reminderEnabled: settings.reminderEnabled,
+        reminderTemplateId: settings.reminderTemplateId,
       }),
     }).catch(() => null);
     setSaving(false);
@@ -364,6 +386,50 @@ export function AgendaClient() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Aviso de tratamiento de datos</CardTitle>
+          <CardDescription>
+            Pega aquí el enlace al aviso aprobado por tu consultorio.
+            Hilora no redacta ni envía un aviso legal por su cuenta.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label htmlFor="privacy-notice">Enlace HTTPS del aviso</Label>
+          <Input id="privacy-notice" type="url" placeholder="https://…" value={settings.privacyNoticeUrl ?? ""}
+            onChange={(e) => patch({ privacyNoticeUrl: e.target.value })} />
+          {!settings.privacyNoticeUrl && <p className="text-sm text-warning-text">Pendiente: completa el aviso antes de activar recordatorios para pacientes.</p>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recordatorio de citas</CardTitle>
+          <CardDescription>
+            Un aviso breve 24 horas antes de la cita, sin mencionar motivos de consulta.
+            El cliente puede responder para pedir un cambio; el equipo gestiona la reprogramación en Citas.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={settings.reminderEnabled}
+              onChange={(e) => patch({ reminderEnabled: e.target.checked })} />
+            Enviar recordatorios automáticamente
+          </label>
+          {whatsappActive && <div className="space-y-1.5">
+            <Label htmlFor="reminder-template">Plantilla aprobada para WhatsApp</Label>
+            <select id="reminder-template" className="w-full rounded-md border bg-background p-2 text-sm"
+              value={settings.reminderTemplateId ?? ""}
+              onChange={(e) => patch({ reminderTemplateId: e.target.value || null })}>
+              <option value="">Sin plantilla</option>
+              {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+            {templates.length === 0 && <p className="text-sm text-muted-foreground">Aún no tienes una plantilla de utilidad aprobada con nombre, fecha y hora. <Link href="/settings/templates" className="underline">Crear plantilla</Link></p>}
+          </div>}
+          {!whatsappActive && <p className="text-sm text-muted-foreground">En Telegram, Hilora enviará un mensaje de texto breve. No necesitas plantilla de Meta.</p>}
+        </CardContent>
+      </Card>
 
       <div className="flex items-center gap-3">
         <Button onClick={save} disabled={saving}>

@@ -51,6 +51,13 @@ describe("guía de inicio", () => {
     expect(guide).toMatchObject({ complete: true, enabled: false, brainConnected: true });
   });
 
+  it("Telegram como canal único no pide conectar WhatsApp", () => {
+    const steps = all();
+    steps[2] = step("whatsapp", "ready", { label: "Telegram", href: "/settings/channels" });
+    const guide = guideFrom({ steps, enabled: false });
+    expect(guide.steps[2]).toMatchObject({ title: "Conecta Telegram", href: "/settings/channels", done: true });
+  });
+
   it("036 — «Conecta tu agente» es opcional: sin él la guía se completa (bandeja manual)", () => {
     const steps = all({ brain: "pending" });
     steps[3] = step("brain", "pending", { nextAction: "Levanta tu agente", problem: null });

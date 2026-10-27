@@ -18,6 +18,8 @@ vi.mock("@/lib/ai/provider", async (importOriginal) => ({
 
 const getBrainHealth = vi.hoisted(() => vi.fn());
 vi.mock("@/server/bot/status", () => ({ getBrainHealth }));
+const channelPreferenceFor = vi.hoisted(() => vi.fn(async () => ({ whatsapp: true, telegram: false })));
+vi.mock("@/server/channels/preference", () => ({ channelPreferenceFor }));
 
 import { onboardingStatus } from "@/server/onboarding/status";
 import { verifyCalendar, hasWeeklyHours } from "@/server/onboarding/calendar-verifiers";
@@ -44,6 +46,7 @@ const paso = async (key: string) =>
 
 beforeEach(() => {
   rows.clear();
+  channelPreferenceFor.mockResolvedValue({ whatsapp: true, telegram: false });
   vi.stubEnv("AGENDA", "");
   vi.stubEnv("BRAIN_DISPATCH_URL", "");
   vi.stubEnv("BRAIN_HEALTH_URL", "");
@@ -79,6 +82,19 @@ describe("una instancia recién instalada", () => {
       null,
       null,
     ]);
+  });
+});
+
+describe("canales elegidos por el negocio", () => {
+  it("Telegram solo se considera listo con el bot conectado, sin pedir WhatsApp", async () => {
+    channelPreferenceFor.mockResolvedValue({ whatsapp: false, telegram: true });
+    rows.set(schema.telegramCredentials, [{ status: "connected" }]);
+    const connected = await paso("whatsapp");
+    expect(connected).toMatchObject({ label: "Telegram", status: "ready", href: "/settings/channels" });
+    rows.set(schema.telegramCredentials, [{ status: "reconnect_required" }]);
+    const disconnected = await paso("whatsapp");
+    expect(disconnected?.status).toBe("pending");
+    expect(disconnected?.problem).toMatch(/Telegram/);
   });
 });
 

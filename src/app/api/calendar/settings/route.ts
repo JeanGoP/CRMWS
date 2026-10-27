@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { CONNECTOR_ORDER } from "@/lib/agenda-connectors";
 import { agendaDisabledResponse, agendaEnabled } from "@/server/agenda/flag";
+import { canConfigure } from "@/lib/auth/roles";
 import {
   CalendarSettingsError,
   getSettings,
@@ -46,6 +47,9 @@ const putSchema = z.object({
     })
     .optional(),
   meetingLink: z.string().nullish(),
+  privacyNoticeUrl: z.string().nullish(),
+  reminderEnabled: z.boolean().optional(),
+  reminderTemplateId: z.string().nullish(),
 });
 
 /**
@@ -56,6 +60,7 @@ const putSchema = z.object({
  */
 export const PUT = withAuth(async (session, req: Request) => {
   if (!agendaEnabled()) return agendaDisabledResponse();
+  if (!canConfigure(session.role)) return apiError(403, "forbidden", "Solo el propietario o un administrador puede configurar la agenda");
   const body = await parseBody(req, putSchema);
   if (!body.ok) return body.response;
 
