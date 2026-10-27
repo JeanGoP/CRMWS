@@ -393,8 +393,8 @@ export function AgendaClient() {
         <CardHeader>
           <CardTitle>Aviso de tratamiento de datos</CardTitle>
           <CardDescription>
-            Pega aquí el enlace al aviso aprobado por tu consultorio.
-            Hilora no redacta ni envía un aviso legal por su cuenta.
+            Pega aquí el enlace al aviso aprobado por tu consultorio. El borrador
+            de este sitio necesita los datos del responsable y su revisión.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
@@ -402,6 +402,12 @@ export function AgendaClient() {
           <Input id="privacy-notice" type="url" placeholder="https://…" value={settings.privacyNoticeUrl ?? ""}
             onChange={(e) => patch({ privacyNoticeUrl: e.target.value })} />
           {!settings.privacyNoticeUrl && <p className="text-sm text-warning-text">Pendiente: completa el aviso antes de activar recordatorios para pacientes.</p>}
+          <p className="text-sm text-muted-foreground">
+            <Link href="/aviso-datos" target="_blank" rel="noopener noreferrer" className="text-brand-text underline underline-offset-2">
+              Revisar el borrador en este sitio
+            </Link>{" "}
+            (aún no aprobado; no pegues su enlace aquí hasta completarlo).
+          </p>
         </CardContent>
       </Card>
 

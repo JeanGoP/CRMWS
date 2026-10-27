@@ -27,10 +27,10 @@ export function launchChecklistFrom(input: {
       title: "Aviso de tratamiento de datos",
       description: input.privacyNoticeUrl
         ? "El enlace aprobado está guardado en Agenda. Revisa con tu equipo cuándo se entrega al cliente."
-        : "Falta el enlace al aviso aprobado por tu negocio. Hilora no redacta el contenido legal.",
+        : "Hay un borrador para revisar. Faltan los datos del responsable y su aprobación antes de usarlo con pacientes.",
       done: Boolean(input.privacyNoticeUrl),
-      href: "/settings/calendar",
-      cta: "Abrir Agenda",
+      href: input.privacyNoticeUrl ? "/settings/calendar" : "/aviso-datos",
+      cta: input.privacyNoticeUrl ? "Abrir Agenda" : "Revisar borrador",
     });
     checks.push({
       key: "reminder",
