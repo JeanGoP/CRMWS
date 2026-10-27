@@ -91,6 +91,10 @@ export async function onboardingStatus(
   const selectedChannels = preference.whatsapp && preference.telegram
     ? "WhatsApp y Telegram"
     : preference.telegram ? "Telegram" : "WhatsApp";
+  const missingChannels = [
+    preference.whatsapp && !whatsappReady ? "WhatsApp" : null,
+    preference.telegram && !telegramReady ? "Telegram" : null,
+  ].filter((name): name is string => Boolean(name));
   const ia = await estadoIaDe(organizationId);
 
   const steps: ReadinessStep[] = [
@@ -119,8 +123,12 @@ export async function onboardingStatus(
       nextAction:
         channelsReady
           ? `${selectedChannels} conectado${preference.whatsapp && preference.telegram ? "s" : ""}`
-          : `Conecta los canales elegidos en Ajustes → Canales`,
-      href: preference.telegram ? "/settings/channels" : "/settings/whatsapp",
+          : missingChannels.length === 1
+            ? `Falta conectar ${missingChannels[0]}.`
+            : "Falta conectar los canales elegidos.",
+      href: missingChannels.length === 1
+        ? missingChannels[0] === "WhatsApp" ? "/settings/whatsapp" : "/settings/telegram"
+        : preference.telegram ? "/settings/channels" : "/settings/whatsapp",
       problem:
         preference.whatsapp && channel?.status === "reconnect_required"
           ? "Meta dejó de aceptar el token de WhatsApp: vuelve a conectar el número."

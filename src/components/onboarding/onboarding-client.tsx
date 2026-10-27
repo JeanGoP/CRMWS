@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ArrowUpRight, Check, Inbox, Power } from "lucide-react";
 import type { Guide, GuideStep } from "@/server/onboarding/guide";
+import type { LaunchCheck } from "@/server/onboarding/launch-checklist";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -20,9 +21,11 @@ import { Button, buttonVariants } from "@/components/ui/button";
  */
 export function OnboardingClient({
   guide,
+  checks,
   agentName,
 }: {
   guide: Guide;
+  checks: LaunchCheck[];
   agentName: string | null;
 }) {
   const router = useRouter();
@@ -148,6 +151,24 @@ export function OnboardingClient({
           })}
         </ol>
 
+        {checks.length > 0 && <section className="rounded-xl border bg-card p-5">
+          <h2 className="text-lg font-semibold">Preparación de tu negocio</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Revisa estos detalles antes de atender nuevos clientes. No bloquean la Bandeja.
+          </p>
+          <ul className="mt-4 space-y-3">
+            {checks.map((check) => <li key={check.key} className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="font-medium">{check.title} <Badge variant={check.done ? "success" : "warning"}>{check.done ? "Listo" : "Pendiente"}</Badge></p>
+                <p className="mt-1 text-sm text-muted-foreground">{check.description}</p>
+              </div>
+              <Link href={check.href} className="shrink-0 text-sm font-medium text-brand-text underline underline-offset-2">
+                {check.cta}
+              </Link>
+            </li>)}
+          </ul>
+        </section>}
+
         <section
           className={cn(
             "rounded-xl border p-5",
@@ -159,13 +180,16 @@ export function OnboardingClient({
           {guide.enabled && guide.brainConnected ? (
             <>
               <h2 className="font-semibold">
-                {agentReady && agentName
+                {!guide.complete
+                  ? "Tu agente está encendido; completa los canales pendientes"
+                  : agentReady && agentName
                   ? `${agentName} ya está contestando`
                   : "Tu agente ya está contestando"}
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                El agente está encendido y atiende a tus clientes. Puedes
-                apagarlo cuando quieras desde Agente.
+                {guide.complete
+                  ? "El agente está encendido y atiende a tus clientes. Puedes apagarlo cuando quieras desde Agente."
+                  : "El agente puede atender por los canales conectados. Termina el paso pendiente de la guía para usar también los demás."}
               </p>
               <Link href="/inbox" className={cn(buttonVariants({ size: "sm" }), "mt-3")}>
                 Ir a la Bandeja <ArrowRight className="h-4 w-4" />

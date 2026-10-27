@@ -86,6 +86,12 @@ describe("una instancia recién instalada", () => {
 });
 
 describe("canales elegidos por el negocio", () => {
+  it("con ambos canales y solo Telegram conectado señala WhatsApp", async () => {
+    channelPreferenceFor.mockResolvedValue({ whatsapp: true, telegram: true });
+    rows.set(schema.telegramCredentials, [{ status: "connected" }]);
+    const status = await paso("whatsapp");
+    expect(status).toMatchObject({ status: "pending", href: "/settings/whatsapp", nextAction: "Falta conectar WhatsApp." });
+  });
   it("Telegram solo se considera listo con el bot conectado, sin pedir WhatsApp", async () => {
     channelPreferenceFor.mockResolvedValue({ whatsapp: false, telegram: true });
     rows.set(schema.telegramCredentials, [{ status: "connected" }]);

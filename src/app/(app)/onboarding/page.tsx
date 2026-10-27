@@ -5,6 +5,7 @@ import { canConfigure } from "@/lib/auth/roles";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { guideStatus } from "@/server/onboarding/guide";
+import { launchChecklist } from "@/server/onboarding/launch-checklist";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,9 @@ export default async function OnboardingPage() {
   const session = await getSessionOrNull();
   if (!session) redirect("/login");
   if (!canConfigure(session.role)) redirect("/inbox");
-  const [guide, [profile]] = await Promise.all([
+  const [guide, checks, [profile]] = await Promise.all([
     guideStatus(session.organizationId),
+    launchChecklist(session.organizationId),
     getDb()
       .select({ name: schema.agentProfile.name })
       .from(schema.agentProfile)
@@ -25,6 +27,6 @@ export default async function OnboardingPage() {
       .limit(1),
   ]);
   return (
-    <OnboardingClient guide={guide} agentName={profile?.name?.trim() || null} />
+    <OnboardingClient guide={guide} checks={checks} agentName={profile?.name?.trim() || null} />
   );
 }

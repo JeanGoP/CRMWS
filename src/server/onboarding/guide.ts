@@ -94,8 +94,10 @@ export function guideFrom(status: OnboardingStatus): Guide {
           : "Conecta el número donde te escriben tus clientes. El CRM registra el webhook en Meta por ti al guardar.",
       done: ready(whatsapp),
       href: whatsapp?.href ?? "/settings/whatsapp",
-      cta: onlyTelegram ? "Conectar Telegram" : bothChannels ? "Revisar canales" : "Conectar WhatsApp",
-      hint: whatsapp?.problem ?? null,
+      cta: whatsapp?.href === "/settings/whatsapp" ? "Conectar WhatsApp"
+        : whatsapp?.href === "/settings/telegram" ? "Conectar Telegram"
+        : "Revisar canales",
+      hint: ready(whatsapp) ? null : (whatsapp?.problem ?? whatsapp?.nextAction ?? null),
     },
     {
       key: "brain",

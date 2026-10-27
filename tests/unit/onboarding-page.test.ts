@@ -8,9 +8,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const getSessionOrNull = vi.hoisted(() => vi.fn());
 const guideStatus = vi.hoisted(() => vi.fn());
 const guideFirst = vi.hoisted(() => vi.fn());
+const launchChecklist = vi.hoisted(() => vi.fn(async () => []));
 
 vi.mock("@/lib/auth/session", () => ({ getSessionOrNull }));
 vi.mock("@/server/onboarding/guide", () => ({ guideStatus, guideFirst }));
+vi.mock("@/server/onboarding/launch-checklist", () => ({ launchChecklist }));
 vi.mock("@/components/onboarding/onboarding-client", () => ({
   OnboardingClient: () => null,
 }));

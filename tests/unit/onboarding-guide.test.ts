@@ -58,6 +58,20 @@ describe("guía de inicio", () => {
     expect(guide.steps[2]).toMatchObject({ title: "Conecta Telegram", href: "/settings/channels", done: true });
   });
 
+  it("indica exactamente qué canal falta conectar", () => {
+    const steps = all();
+    steps[2] = step("whatsapp", "pending", {
+      label: "WhatsApp y Telegram",
+      href: "/settings/whatsapp",
+      nextAction: "Falta conectar WhatsApp.",
+    });
+    expect(guideFrom({ steps, enabled: true }).steps[2]).toMatchObject({
+      title: "Conecta tus canales",
+      cta: "Conectar WhatsApp",
+      hint: "Falta conectar WhatsApp.",
+    });
+  });
+
   it("036 — «Conecta tu agente» es opcional: sin él la guía se completa (bandeja manual)", () => {
     const steps = all({ brain: "pending" });
     steps[3] = step("brain", "pending", { nextAction: "Levanta tu agente", problem: null });
