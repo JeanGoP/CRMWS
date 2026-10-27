@@ -18,3 +18,4 @@ Instancia con `AGENDA=on`, una organización, Telegram conectado o WhatsApp cone
 - Una cita cancelada, un bloqueo o una cita del Laboratorio no produce mensaje.
 - Si el proveedor rechaza el envío, Citas muestra «Recordatorio no enviado» y el equipo puede abrir la conversación. El worker no reintenta automáticamente.
 - Con Telegram como único canal elegido, la guía de inicio no exige WhatsApp y Ajustes → Agenda no exige plantilla de Meta.
+- Con ambos canales activos y sin plantilla aprobada, el recordatorio de Telegram sale y el de WhatsApp queda pendiente, sin registrar fallo ni consumir intento.

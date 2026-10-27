@@ -111,6 +111,14 @@ export class CalendarSettingsError extends Error {
   }
 }
 
+/** Telegram no espera a Meta; WhatsApp sí requiere plantilla. */
+export function mustValidateReminderTemplate(
+  channels: { whatsapp: boolean; telegram: boolean },
+  templateId: string | null
+): boolean {
+  return channels.whatsapp && (Boolean(templateId) || !channels.telegram);
+}
+
 /**
  * Lo que llega de fuera, antes de normalizar: el horario y el conector vienen
  * sueltos porque su validación vive AQUÍ. Si el tipo estricto se exigiera en la
@@ -186,7 +194,9 @@ export async function upsertSettings(
       throw new CalendarSettingsError("Agrega el enlace al aviso de tratamiento de datos antes de activar recordatorios");
     }
     const channels = await channelPreferenceFor(organizationId);
-    if (channels.whatsapp) {
+    // Con ambos canales, Telegram puede avisar mientras Meta revisa la
+    // plantilla. WhatsApp empezará a avisar cuando se seleccione una aprobada.
+    if (mustValidateReminderTemplate(channels, next.reminderTemplateId)) {
       const [template] = next.reminderTemplateId
         ? await getDb().select({ status: schema.template.status, body: schema.template.body, category: schema.template.category })
             .from(schema.template)

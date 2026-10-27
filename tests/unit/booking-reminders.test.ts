@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { reminderText, reminderWindow } from "@/server/agenda/reminders";
+import { mustValidateReminderTemplate } from "@/server/agenda/settings";
 
 describe("recordatorios de citas", () => {
   it("solo considera la primera hora de la ventana de 24 h", () => {
@@ -15,5 +16,12 @@ describe("recordatorios de citas", () => {
     expect(text).toContain("28 oct 2026");
     expect(text).toContain("10:00");
     expect(text).not.toMatch(/psicolog|terapia|diagnóstico|consulta/i);
+  });
+
+  it("Telegram puede activarse sin plantilla; WhatsApp solo la necesita si es el único canal", () => {
+    expect(mustValidateReminderTemplate({ whatsapp: true, telegram: true }, null)).toBe(false);
+    expect(mustValidateReminderTemplate({ whatsapp: false, telegram: true }, null)).toBe(false);
+    expect(mustValidateReminderTemplate({ whatsapp: true, telegram: false }, null)).toBe(true);
+    expect(mustValidateReminderTemplate({ whatsapp: true, telegram: true }, "tpl_1")).toBe(true);
   });
 });

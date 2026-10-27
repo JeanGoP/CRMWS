@@ -15,6 +15,8 @@ La guía inicial exige WhatsApp incluso cuando el negocio elige solo Telegram. L
 5. WhatsApp usa la plantilla aprobada. Telegram recibe un texto breve sin motivo de consulta. Un fallo queda visible en la cita para que el equipo contacte al paciente; no hay reintento automático que pueda duplicar un mensaje.
 6. Reprogramar una cita restablece su estado de recordatorio para el nuevo horario.
 
+**Ajuste del 27 de octubre de 2026:** cuando ambos canales están activos, la falta de plantilla de Meta deja pendiente únicamente WhatsApp. Telegram puede enviar su recordatorio; las citas de WhatsApp no consumen un intento hasta que se seleccione una plantilla aprobada.
+
 ## Límites deliberados
 
 - El enlace al aviso no equivale a consentimiento individual. El consultorio debe aprobar su contenido y su proceso de autorización antes de habilitar avisos a pacientes reales.

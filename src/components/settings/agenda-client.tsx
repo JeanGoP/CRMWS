@@ -66,6 +66,7 @@ export function AgendaClient() {
   const [saved, setSaved] = useState(false);
   const [templates, setTemplates] = useState<ReminderTemplate[]>([]);
   const [whatsappActive, setWhatsappActive] = useState(true);
+  const [telegramActive, setTelegramActive] = useState(false);
 
   useEffect(() => {
     void (async () => {
@@ -90,8 +91,9 @@ export function AgendaClient() {
       }
       const channelRes = await fetch("/api/settings/channel-preference").catch(() => null);
       if (channelRes?.ok) {
-        const data = (await channelRes.json()) as { preference: { whatsapp: boolean } };
+        const data = (await channelRes.json()) as { preference: { whatsapp: boolean; telegram: boolean } };
         setWhatsappActive(data.preference.whatsapp);
+        setTelegramActive(data.preference.telegram);
       }
     })();
   }, []);
@@ -425,9 +427,13 @@ export function AgendaClient() {
               <option value="">Sin plantilla</option>
               {templates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
-            {templates.length === 0 && <p className="text-sm text-muted-foreground">Aún no tienes una plantilla de utilidad aprobada con nombre, fecha y hora. <Link href="/settings/templates" className="underline">Crear plantilla</Link></p>}
+            {templates.length === 0 && <p className="text-sm text-muted-foreground">
+              Aún no tienes una plantilla de utilidad aprobada con nombre, fecha y hora.
+              {telegramActive ? " Telegram puede enviar sus recordatorios mientras tanto; WhatsApp esperará la plantilla. " : " "}
+              <Link href="/settings/templates" className="underline">Crear plantilla</Link>
+            </p>}
           </div>}
-          {!whatsappActive && <p className="text-sm text-muted-foreground">En Telegram, Hilora enviará un mensaje de texto breve. No necesitas plantilla de Meta.</p>}
+          {telegramActive && <p className="text-sm text-muted-foreground">Telegram enviará un mensaje de texto breve sin plantilla de Meta.</p>}
         </CardContent>
       </Card>
 

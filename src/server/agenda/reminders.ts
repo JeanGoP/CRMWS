@@ -1,4 +1,4 @@
-import { and, eq, gte, isNotNull, isNull, lte } from "drizzle-orm";
+import { and, eq, gte, isNotNull, isNull, lte, or } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { partsInTz } from "@/lib/time/slots";
@@ -39,9 +39,16 @@ export async function sendDueReminders(now = new Date()): Promise<void> {
     }).from(schema.booking).innerJoin(schema.calendarSettings,
       and(eq(schema.booking.organizationId, schema.calendarSettings.organizationId),
         eq(schema.calendarSettings.reminderEnabled, true)))
+      .innerJoin(schema.conversation,
+        and(eq(schema.booking.conversationId, schema.conversation.id),
+          eq(schema.booking.organizationId, schema.conversation.organizationId)))
       .where(and(eq(schema.booking.kind, "session"), eq(schema.booking.status, "agendada"),
         eq(schema.booking.isTest, false), isNotNull(schema.booking.conversationId),
         isNull(schema.booking.reminderAttemptedAt),
+        // Sin plantilla aprobada de Meta, las citas de WhatsApp esperan; no
+        // consumen un intento ni impiden que se procese Telegram.
+        or(eq(schema.conversation.channel, "telegram"),
+          and(eq(schema.conversation.channel, "whatsapp"), isNotNull(schema.calendarSettings.reminderTemplateId))),
         gte(schema.booking.scheduledAt, earliest), lte(schema.booking.scheduledAt, latest)))
       .limit(100);
 
