@@ -27,10 +27,10 @@ export function launchChecklistFrom(input: {
       title: "Aviso de tratamiento de datos",
       description: input.privacyNoticeUrl
         ? "El enlace aprobado está guardado en Agenda. Revisa con tu equipo cuándo se entrega al cliente."
-        : "Hay un borrador para revisar. Faltan los datos del responsable y su aprobación antes de usarlo con pacientes.",
+        : "Completa los datos del responsable en Agenda y publica el aviso cuando esté revisado.",
       done: Boolean(input.privacyNoticeUrl),
-      href: input.privacyNoticeUrl ? "/settings/calendar" : "/aviso-datos",
-      cta: input.privacyNoticeUrl ? "Abrir Agenda" : "Revisar borrador",
+      href: "/settings/calendar",
+      cta: input.privacyNoticeUrl ? "Abrir Agenda" : "Completar aviso",
     });
     checks.push({
       key: "reminder",

@@ -9,8 +9,8 @@ describe("preparación del negocio en la guía", () => {
     expect(checks.map((c) => [c.key, c.done])).toEqual([
       ["privacy", false], ["reminder", false], ["lab", true],
     ]);
-    expect(checks[0]?.description).toMatch(/borrador para revisar/);
-    expect(checks[0]?.href).toBe("/aviso-datos");
+    expect(checks[0]?.description).toMatch(/Completa los datos/);
+    expect(checks[0]?.href).toBe("/settings/calendar");
     expect(checks[0]?.done).toBe(false);
   });
 

@@ -19,6 +19,7 @@ import {
   type ConnectorId,
 } from "@/lib/agenda-connectors";
 import { ConnectorCredentials } from "@/components/settings/connector-credentials";
+import { PrivacyNoticeCard } from "@/components/settings/privacy-notice-card";
 import { countVariables } from "@/lib/templates";
 
 /**
@@ -389,27 +390,17 @@ export function AgendaClient() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Aviso de tratamiento de datos</CardTitle>
-          <CardDescription>
-            Pega aquí el enlace al aviso aprobado por tu consultorio. El borrador
-            de este sitio necesita los datos del responsable y su revisión.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Label htmlFor="privacy-notice">Enlace HTTPS del aviso</Label>
+      <PrivacyNoticeCard currentUrl={settings.privacyNoticeUrl}
+        onPublished={(url) => patch({ privacyNoticeUrl: url })} />
+      <details className="rounded-xl border bg-card p-4 text-sm">
+        <summary className="cursor-pointer font-medium">Usar un aviso externo en vez del aviso de Hilora</summary>
+        <div className="mt-3 space-y-2">
+          <Label htmlFor="privacy-notice">Enlace HTTPS del aviso externo aprobado</Label>
           <Input id="privacy-notice" type="url" placeholder="https://…" value={settings.privacyNoticeUrl ?? ""}
             onChange={(e) => patch({ privacyNoticeUrl: e.target.value })} />
-          {!settings.privacyNoticeUrl && <p className="text-sm text-warning-text">Pendiente: completa el aviso antes de activar recordatorios para pacientes.</p>}
-          <p className="text-sm text-muted-foreground">
-            <Link href="/aviso-datos" target="_blank" rel="noopener noreferrer" className="text-brand-text underline underline-offset-2">
-              Revisar el borrador en este sitio
-            </Link>{" "}
-            (aún no aprobado; no pegues su enlace aquí hasta completarlo).
-          </p>
-        </CardContent>
-      </Card>
+          <p className="text-muted-foreground">Este enlace se guarda con el botón Guardar de Agenda.</p>
+        </div>
+      </details>
 
       <Card>
         <CardHeader>

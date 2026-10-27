@@ -849,6 +849,16 @@ export const calendarSettings = pgTable(
   (t) => [uniqueIndex("calendar_settings_org_uq").on(t.organizationId)]
 );
 
+/** Borrador y copia publicada del aviso, aislados por organización. */
+export const privacyNotice = pgTable("privacy_notice", {
+  organizationId: text("organization_id").primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  draft: jsonb("draft").notNull().default(sql`'{}'::jsonb`),
+  published: jsonb("published"),
+  publishedAt: timestamp("published_at"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 /**
  * La cita. Una sola tabla para sesiones y bloqueos manuales: un bloqueo es
  * una cita sin contacto que ocupa agenda igual.
