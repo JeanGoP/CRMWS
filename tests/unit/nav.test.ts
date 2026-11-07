@@ -105,6 +105,9 @@ describe("ajustes en tres secciones", () => {
       Agente: ["IA"],
       Negocio: ["Marca", "Plantillas", "Respuestas rápidas", "Equipo", "Anuncios"],
     });
+    expect(links(settingsSections({ cartera: true })).Negocio).toEqual([
+      "Marca", "Plantillas", "Respuestas rápidas", "Equipo", "Cartera",
+    ]);
   });
 
   it("con todo encendido, cada pantalla de Ajustes tiene exactamente un enlace", () => {
