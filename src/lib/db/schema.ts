@@ -1475,3 +1475,15 @@ export const conversationNote = pgTable(
     index("conversation_note_conv_idx").on(t.organizationId, t.conversationId, t.createdAt),
   ]
 );
+
+/** 053 - Conector de cartera, aislado por negocio y apagado por defecto. */
+export const carteraSettings = pgTable("cartera_settings", {
+  organizationId: text("organization_id").primaryKey()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  apiUrl: text("api_url"),
+  tokenCipher: text("token_cipher"),
+  tokenIv: text("token_iv"),
+  tokenTag: text("token_tag"),
+  config: jsonb("config").notNull().default(sql`'{}'::jsonb`),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

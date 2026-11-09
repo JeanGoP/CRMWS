@@ -237,6 +237,20 @@ cae después de confirmar, la cita queda en el CRM con el enlace pendiente de
 reintentar. Si Google no responde al consultar disponibilidad, la agenda no
 ofrece nuevos horarios hasta poder verificarla.
 
+### 💰 Cartera configurable (opcional, en preparación)
+
+Con `CARTERA=on` aparece **Ajustes → Cartera**. El propietario o administrador
+puede guardar la URL HTTPS de la API de cartera, su token cifrado, los horarios
+y límites de contacto, textos por tramo de mora, forma de verificar al titular
+y datos oficiales de pago. Una consulta de prueba por identificación y fecha
+de corte muestra solo conteos y totales, sin nombres ni teléfonos.
+
+**Guardar el borrador no inicia cobros.** La entrega automática y el acceso de
+Nea a saldos siguen desactivados hasta validar el contrato real de la API, la
+identidad del cliente, la autorización de contacto y las plantillas del canal.
+El contrato recibido y los pendientes están en
+[`specs/053-cartera-configurable/spec.md`](specs/053-cartera-configurable/spec.md).
+
 ### 📈 Conversiones de anuncios (opcional, apagada por defecto)
 
 Si anuncias con **Click-to-WhatsApp**, Meta sabe qué conversaciones empezaron
