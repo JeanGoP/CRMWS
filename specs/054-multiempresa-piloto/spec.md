@@ -17,3 +17,9 @@ En una base nueva, define `MIGRATIONS_DIR=./drizzle` y aplica las migraciones co
 En Turismo Demo el catálogo vive en Agente → Knowledge base. La tarjeta de venta lleva el valor cotizado en el Pipeline. El operador revisa el comprobante de prueba en **Pago por verificar** y mueve la tarjeta a **Reserva confirmada** después de verificarlo.
 
 Con la semilla cargada en la copia local, `node --env-file=.env.piloto scripts/e2e-multiempresa-medios.mjs` verifica el aislamiento del hilo y comprobante ficticio de Turismo Demo.
+
+## Copia en Coolify
+
+En un proyecto nuevo de Coolify, selecciona Docker Compose desde la rama de prueba, con la ruta `/docker-compose.piloto.yml`. Asigna un dominio HTTPS al servicio `hilora` en el puerto interno 3000 y deja `piloto-db` en la red interna. El compose declara sus propios volúmenes y Coolify genera las credenciales `SERVICE_PASSWORD_*`.
+
+El arranque comprueba el destino de PostgreSQL antes de migrar y siembra las dos empresas en una base vacía. En los siguientes arranques conserva la configuración de la prueba. El operador entra como `operador@example.test` con la clave que Coolify guarda en `SERVICE_PASSWORD_64_PILOTOACCESO` de la copia. Nunca se usa la contraseña de la copia local ni se copian datos del consultorio real.

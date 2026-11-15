@@ -1,0 +1,54 @@
+services:
+  hilora:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: piloto
+      args:
+        SOURCE_COMMIT: ${SOURCE_COMMIT:-}
+    environment:
+      SERVICE_URL_HILORA_3000: /
+      APP_BASE_URL: ${SERVICE_URL_HILORA_3000}
+      DATABASE_URL: postgresql://hilora_piloto:${SERVICE_PASSWORD_64_PILOTODB}@piloto-db:5432/hilora_piloto
+      BETTER_AUTH_SECRET: ${SERVICE_PASSWORD_64_PILOTOSESION}
+      PILOTO_LLAVE_CIFRADO: ${SERVICE_PASSWORD_64_PILOTOCIFRADO}
+      META_WEBHOOK_VERIFY_TOKEN: ${SERVICE_PASSWORD_PILOTOVERIFY}
+      MULTIEMPRESA_PILOTO: "on"
+      MULTIEMPRESA_ADMIN_EMAIL: operador@example.test
+      PILOTO_ADMIN_PASSWORD: ${SERVICE_PASSWORD_64_PILOTOACCESO}
+      AGENDA: "on"
+      CARTERA: "on"
+    volumes:
+      - piloto-adjuntos:/data
+    depends_on:
+      piloto-db:
+        condition: service_healthy
+    networks:
+      - default
+      - datos-piloto
+    restart: unless-stopped
+
+  piloto-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: hilora_piloto
+      POSTGRES_USER: hilora_piloto
+      POSTGRES_PASSWORD: ${SERVICE_PASSWORD_64_PILOTODB}
+    volumes:
+      - piloto-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "hilora_piloto", "-d", "hilora_piloto"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks:
+      - datos-piloto
+    restart: unless-stopped
+
+volumes:
+  piloto-postgres:
+  piloto-adjuntos:
+
+networks:
+  datos-piloto:
+    internal: true

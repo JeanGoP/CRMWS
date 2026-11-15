@@ -75,3 +75,18 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=40s --retries=5 \
 ENTRYPOINT ["vocero-entrypoint.sh"]
 # Migrar al BOOT del contenedor nuevo y arrancar el server standalone
 CMD ["sh", "-c", "node migrate.mjs && node server.js"]
+
+# El perfil piloto añade la semilla. La última etapa conserva la imagen habitual.
+FROM builder AS piloto-builder
+RUN pnpm exec esbuild scripts/seed/piloto.ts --bundle --platform=node \
+    --format=esm --outfile=seed-piloto.bundle.mjs --alias:@=./src \
+    --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
+
+FROM runner AS piloto
+COPY --from=piloto-builder --chown=vocero:vocero /app/seed-piloto.bundle.mjs ./seed-piloto.mjs
+COPY piloto-entrypoint.sh /usr/local/bin/piloto-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/piloto-entrypoint.sh \
+    && chmod 755 /usr/local/bin/piloto-entrypoint.sh
+CMD ["/usr/local/bin/piloto-entrypoint.sh"]
+
+FROM runner AS produccion
