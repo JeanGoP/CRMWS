@@ -13,6 +13,7 @@ export type Credentials = {
   verifiedName: string | null;
   status: "connected" | "reconnect_required";
   token: string;
+  appId?: string | null;
 };
 
 type Row = typeof schema.metaCredentials.$inferSelect;
@@ -23,6 +24,7 @@ function toCredentials(row: Row): Credentials {
     organizationId: row.organizationId,
     wabaId: row.wabaId,
     phoneNumberId: row.phoneNumberId,
+    appId: row.appId,
     displayPhoneNumber: row.displayPhoneNumber,
     verifiedName: row.verifiedName,
     status: row.status,

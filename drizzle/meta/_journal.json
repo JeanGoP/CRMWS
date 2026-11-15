@@ -218,6 +218,13 @@
       "when": 1794089974889,
       "tag": "0030_yielding_electro",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794782236797,
+      "tag": "0031_whatsapp_multiempresa",
+      "breakpoints": true
     }
   ]
 }

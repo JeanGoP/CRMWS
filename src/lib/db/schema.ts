@@ -412,8 +412,8 @@ export const message = pgTable(
     conversationId: text("conversation_id")
       .notNull()
       .references(() => conversation.id, { onDelete: "cascade" }),
-    /** ID de WhatsApp — UNIQUE (idempotencia). Nullable en salientes de prueba. */
-    waMessageId: text("wa_message_id").unique(),
+    /** ID del proveedor, único por organización. Nullable en salientes de prueba. */
+    waMessageId: text("wa_message_id"),
     direction: text("direction", { enum: ["in", "out"] }).notNull(),
     type: text("type").notNull().default("text"),
     text: text("text"),
@@ -447,6 +447,7 @@ export const message = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
+    uniqueIndex("message_org_wa_message_uq").on(t.organizationId, t.waMessageId),
     index("message_org_conv_idx").on(
       t.organizationId,
       t.conversationId,
@@ -518,6 +519,11 @@ export const metaCredentials = pgTable(
     tokenCipher: text("token_cipher").notNull(),
     tokenIv: text("token_iv").notNull(),
     tokenTag: text("token_tag").notNull(),
+    // Producción multiempresa: el secreto de firma pertenece a esta conexión.
+    appId: text("app_id"),
+    appSecretCipher: text("app_secret_cipher"),
+    appSecretIv: text("app_secret_iv"),
+    appSecretTag: text("app_secret_tag"),
     status: text("status", { enum: ["connected", "reconnect_required"] })
       .notNull()
       .default("connected"),

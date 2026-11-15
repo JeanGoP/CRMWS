@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AJUSTES_DEL_PILOTO } from "@/lib/empresas-piloto";
+import { ajusteMultiempresaDisponible } from "@/lib/empresas-piloto";
 import { cn } from "@/lib/utils";
 import { settingsSections } from "@/lib/nav";
 
@@ -24,7 +24,8 @@ export function SettingsNav({
   tiktok = false,
   telegram = false,
   cartera = false,
-  piloto = false,
+  multiempresa = false,
+  canalesMultiempresa = false,
 }: {
   agenda?: boolean;
   atribucion?: boolean;
@@ -33,12 +34,13 @@ export function SettingsNav({
   tiktok?: boolean;
   telegram?: boolean;
   cartera?: boolean;
-  piloto?: boolean;
+  multiempresa?: boolean;
+  canalesMultiempresa?: boolean;
 }) {
   const pathname = usePathname();
-  const sections = settingsSections({ agenda, atribucion, instagram, messenger, tiktok, telegram, cartera });
-  const visibles = piloto ? sections
-    .map((grupo) => ({ ...grupo, links: grupo.links.filter(({ href }) => AJUSTES_DEL_PILOTO.has(href)) }))
+  const sections = settingsSections({ agenda, atribucion, instagram, messenger, tiktok, telegram, cartera, canalesMultiempresa });
+  const visibles = multiempresa ? sections
+    .map((grupo) => ({ ...grupo, links: grupo.links.filter(({ href }) => ajusteMultiempresaDisponible(href, canalesMultiempresa)) }))
     .filter(({ links }) => links.length > 0) : sections;
   return (
     <nav

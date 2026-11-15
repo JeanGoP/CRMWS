@@ -3,6 +3,8 @@ import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
+import { canConfigure } from "@/lib/auth/roles";
+import { multiempresaCanales } from "@/server/empresas/flag";
 import { isTemplateLanguage } from "@/lib/template-languages";
 import {
   createTemplate,
@@ -13,7 +15,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const GET = withAuth(async (session) => {
+export const GET = withAuth(async (session, _req: Request) => {
   const db = getDb();
   const templates = await db
     .select()
@@ -36,6 +38,9 @@ const createSchema = z.object({
 });
 
 export const POST = withAuth(async (session, req: Request) => {
+  if (multiempresaCanales() && !canConfigure(session.role)) {
+    return apiError(403, "forbidden", "Solo quien administra puede crear plantillas");
+  }
   const body = await parseBody(req, createSchema);
   if (!body.ok) return body.response;
 

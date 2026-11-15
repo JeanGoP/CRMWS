@@ -154,9 +154,15 @@ async function prepareSend(
     .from(schema.conversation)
     .innerJoin(
       schema.contact,
-      eq(schema.conversation.contactId, schema.contact.id)
+      and(
+        eq(schema.conversation.contactId, schema.contact.id),
+        eq(schema.conversation.organizationId, schema.contact.organizationId)
+      )
     )
-    .where(eq(schema.conversation.id, conversationId))
+    .where(and(
+      eq(schema.conversation.id, conversationId),
+      eq(schema.conversation.organizationId, organizationId)
+    ))
     .limit(1);
   const row = rows[0];
   if (!row || row.conversation.organizationId !== organizationId) {
@@ -557,13 +563,14 @@ export async function sendText(input: {
 }
 
 async function callTelegramSend(target: SendTarget, text: string): Promise<string> {
+  const credentials = target.telegram!;
   try {
-    const id = await sendTelegramText(target.telegram!.token, target.recipient, text);
-    return `tg_${target.telegram!.botId}_${target.recipient}_${id}`;
+    const id = await sendTelegramText(credentials.token, target.recipient, text);
+    return `tg_${credentials.botId}_${target.recipient}_${id}`;
   } catch (err) {
     if (err instanceof TelegramApiError) {
       if (err.status === 401) {
-        await markTelegramReconnectRequired(target.telegram!.organizationId);
+        await markTelegramReconnectRequired(credentials);
         throw new SendError("reconnect_required", "Telegram rechazó el token: reconecta el bot en Ajustes");
       }
       throw new SendError(err.status === 403 ? "meta_error" : "meta_unavailable",

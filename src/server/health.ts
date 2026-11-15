@@ -4,7 +4,8 @@ import { getDb } from "@/lib/db";
 import { APP_VERSION, resolveCommit } from "@/lib/version";
 import { parseAgendaFlag } from "@/server/agenda/flag";
 import { parseAtribucionFlag } from "@/server/attribution/flag";
-import { parseChannels } from "@/server/channels/enabled";
+import { channelsForEnvironment } from "@/server/channels/enabled";
+import { multiempresaActiva } from "@/server/empresas/flag";
 import { mediaDirStatus } from "@/server/media-dir";
 import { conteoGlobal } from "@/server/webhooks/eventos";
 
@@ -92,7 +93,7 @@ export type FlagEnv = {
  * iguales respondan igual.
  */
 export function healthFeatures(env: FlagEnv = process.env): HealthFeatures {
-  const channels = parseChannels(env.CHANNELS);
+  const channels = channelsForEnvironment(env);
   return {
     agenda: parseAgendaFlag(env.AGENDA),
     channels: CHANNEL_ORDER.filter((c) => channels.has(c)),
@@ -115,7 +116,7 @@ export async function checkHealth(): Promise<HealthResult> {
   }
   const { commit, verified } = resolveCommit();
   const media = await mediaDirStatus();
-  const webhooks = await conteoGlobal().catch(() => null);
+  const webhooks = multiempresaActiva() ? null : await conteoGlobal().catch(() => null);
   return {
     status: 200,
     body: {

@@ -30,7 +30,7 @@ import { ImportContactsDialog } from "./import-contacts-dialog";
 import { NewContactDialog } from "./new-contact-dialog";
 import { StartConversation } from "./start-conversation";
 
-export function ContactsClient() {
+export function ContactsClient({ permiteIniciarConversacion }: { permiteIniciarConversacion: boolean }) {
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactDto[]>([]);
   const [query, setQuery] = useState("");
@@ -223,15 +223,17 @@ export function ContactsClient() {
                   </Button>
                   {/* A quien nunca escribió hay que abrirle la conversación con
                       una plantilla: es regla de Meta, no del CRM. */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Escribir primero"
-                    title="Escribir primero (con plantilla)"
-                    onClick={() => setEscribiendo(c)}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+                  {permiteIniciarConversacion && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Escribir primero"
+                      title="Escribir primero (con plantilla)"
+                      onClick={() => setEscribiendo(c)}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Link href={`/inbox?contact=${c.id}`}>
                     <Button variant="ghost" size="icon" aria-label="Abrir conversación">
                       <MessageSquareText className="h-4 w-4" />

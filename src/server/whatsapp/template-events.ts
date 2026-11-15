@@ -1,5 +1,6 @@
 import type { WebhookValue } from "@/server/inbox/webhook";
 import { applyTemplateStatusEvent } from "@/server/whatsapp/templates";
+import type { VinculoWhatsapp } from "./webhook-multiempresa";
 
 /**
  * Evento `message_template_status_update` (llega a nivel WABA: se enruta por
@@ -7,7 +8,8 @@ import { applyTemplateStatusEvent } from "@/server/whatsapp/templates";
  */
 export async function processTemplateStatusValue(
   wabaId: string | null,
-  value: WebhookValue
+  value: WebhookValue,
+  vinculo?: VinculoWhatsapp
 ): Promise<void> {
-  await applyTemplateStatusEvent(wabaId, value);
+  await applyTemplateStatusEvent(wabaId, value, vinculo);
 }

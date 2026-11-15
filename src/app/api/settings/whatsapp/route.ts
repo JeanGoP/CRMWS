@@ -1,5 +1,17 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
+import { canConfigure } from "@/lib/auth/roles";
+import { multiempresaActiva, multiempresaCanales } from "@/server/empresas/flag";
+import {
+  conexionWhatsappMultiempresaSchema,
+  respuestaErrorWhatsapp,
+  WhatsappConfigError,
+} from "@/server/whatsapp/connect-multiempresa";
+import {
+  desconectarWhatsappDeEmpresa,
+  guardarWhatsappMultiempresa,
+  registrarWhatsappDeEmpresa,
+} from "@/server/whatsapp/credentials-multiempresa";
 import {
   desconectarCanal,
   getCredentialsByOrg,
@@ -19,7 +31,17 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function exigirPermisoWhatsapp(rol: string) {
+  if (!multiempresaActiva()) return null;
+  if (!multiempresaCanales()) return new Response(null, { status: 404 });
+  return canConfigure(rol)
+    ? null
+    : apiError(403, "forbidden", "Solo quien administra la empresa puede configurar WhatsApp.");
+}
+
 export const GET = withAuth(async (session) => {
+  const denial = exigirPermisoWhatsapp(session.role);
+  if (denial) return denial;
   const creds = await getCredentialsByOrg(session.organizationId);
   if (!creds) return Response.json({ connection: null });
   return Response.json({
@@ -30,6 +52,7 @@ export const GET = withAuth(async (session) => {
       verifiedName: creds.verifiedName,
       status: creds.status,
       tokenLast4: tokenLast4(creds.token),
+      ...(multiempresaCanales() ? { appId: creds.appId ?? null } : {}),
     },
   });
 });
@@ -50,6 +73,22 @@ const putSchema = z.object({
  * reintentar (o pegar la URL a mano, que sigue a la vista).
  */
 export const PUT = withAuth(async (session, req: Request) => {
+  const denial = exigirPermisoWhatsapp(session.role);
+  if (denial) return denial;
+  if (multiempresaCanales()) {
+    const body = await parseBody(req, conexionWhatsappMultiempresaSchema);
+    if (!body.ok) return body.response;
+    try {
+      const guardada = await guardarWhatsappMultiempresa(session.organizationId, body.data);
+      const webhook = await registrarWhatsappDeEmpresa(session.organizationId, guardada.id).catch((err: unknown) => {
+        const message = err instanceof WhatsappConfigError ? err.message : "Reintenta registrar el webhook desde Ajustes.";
+        return { ok: false, message };
+      });
+      return Response.json({ ok: true, displayPhoneNumber: guardada.displayPhoneNumber, webhook });
+    } catch (err) {
+      return respuestaErrorWhatsapp(err);
+    }
+  }
   const body = await parseBody(req, putSchema);
   if (!body.ok) return body.response;
 
@@ -94,6 +133,15 @@ export const PUT = withAuth(async (session, req: Request) => {
  * conexión. Idempotente: sin conexión responde 200 igual.
  */
 export const DELETE = withAuth(async (session) => {
+  const denial = exigirPermisoWhatsapp(session.role);
+  if (denial) return denial;
+  if (multiempresaCanales()) {
+    try {
+      return Response.json({ ok: true, ...await desconectarWhatsappDeEmpresa(session.organizationId) });
+    } catch (err) {
+      return respuestaErrorWhatsapp(err);
+    }
+  }
   const creds = await getCredentialsByOrg(session.organizationId);
   if (creds) {
     await unregisterWebhookForNumber({

@@ -114,6 +114,7 @@ export function settingsSections({
   tiktok = false,
   telegram = false,
   cartera = false,
+  canalesMultiempresa = false,
 }: {
   agenda?: boolean;
   /** 016 — "Anuncios" existe solo con la bandera ATRIBUCION. */
@@ -126,11 +127,12 @@ export function settingsSections({
   tiktok?: boolean;
   telegram?: boolean;
   cartera?: boolean;
+  canalesMultiempresa?: boolean;
 }): SettingsSection[] {
   const canales: SettingsLink[] = [];
   // 023 — "Estado" reúne todos los canales; con WhatsApp solo no aporta nada
   // que su pantalla no diga, así que no existe (ADR-001).
-  if (instagram || messenger || tiktok || telegram) {
+  if (instagram || messenger || tiktok || telegram || canalesMultiempresa) {
     canales.push({ href: "/settings/channels", label: "Estado" });
   }
   canales.push({ href: "/settings/whatsapp", label: "WhatsApp" });

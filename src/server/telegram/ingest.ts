@@ -1,4 +1,5 @@
 import { isChannelActiveForOrg } from "@/server/channels/preference";
+import { multiempresaActiva, multiempresaCanales } from "@/server/empresas/flag";
 import { telegramCredentialsForBot } from "@/server/telegram/credentials";
 import { ingestInboundMessage } from "@/server/inbox/ingest";
 import { z } from "zod";
@@ -33,14 +34,17 @@ export function normalizeTelegramUpdate(botId: string, update: TelegramUpdate) {
     timestamp: String(msg.date ?? Math.floor(Date.now() / 1000)) };
 }
 
-export async function processTelegramUpdate(payload: unknown): Promise<void> {
+export async function processTelegramUpdate(payload: unknown, organizationIdVerificada?: string): Promise<void> {
   if (!payload || typeof payload !== "object") return;
-  const { botId, update } = payload as { botId?: string; update?: unknown };
-  if (!botId) return;
+  const { botId, update, credentialId } = payload as { botId?: string; update?: unknown; credentialId?: string };
+  if (multiempresaActiva() && (!multiempresaCanales() || !organizationIdVerificada || !credentialId)) return;
+  if (typeof botId !== "string" || !/^\d+$/.test(botId)) return;
   const parsed = telegramUpdateSchema.safeParse(update);
   if (!parsed.success) return;
   const creds = await telegramCredentialsForBot(botId);
-  if (!creds || !(await isChannelActiveForOrg("telegram", creds.organizationId))) return;
+  if (!creds || (organizationIdVerificada && creds.organizationId !== organizationIdVerificada) ||
+    (credentialId && creds.id !== credentialId)) return;
+  if (!(await isChannelActiveForOrg("telegram", creds.organizationId))) return;
   const msg = normalizeTelegramUpdate(botId, parsed.data);
   if (!msg) return;
   await ingestInboundMessage({

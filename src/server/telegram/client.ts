@@ -34,6 +34,12 @@ export function verifyTelegramBot(token: string) {
   return telegramRequest<{ id: number; username: string; is_bot: boolean }>(token, "getMe");
 }
 
+export async function currentTelegramWebhook(token: string): Promise<string> {
+  const info = await telegramRequest<{ url: string }>(token, "getWebhookInfo");
+  if (typeof info?.url !== "string") throw new TelegramApiError(502);
+  return info.url;
+}
+
 export async function registerTelegramWebhook(token: string, botId: string, secret: string): Promise<void> {
   const url = telegramWebhookUrl(botId);
   if (!url.startsWith("https://")) throw new TelegramApiError(422);

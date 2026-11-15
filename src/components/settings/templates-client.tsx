@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { TemplateDto } from "@/lib/types";
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import {
   countVariables,
   renderBody,
@@ -107,7 +108,7 @@ export function TemplatesClient() {
   const [creating, setCreating] = useState(false);
 
   const refetch = useCallback(async () => {
-    const res = await fetch("/api/templates").catch(() => null);
+    const res = await fetchEmpresa("/api/templates").catch(() => null);
     if (!res?.ok) {
       setTemplates((current) => current ?? []);
       return;
@@ -128,7 +129,7 @@ export function TemplatesClient() {
         setSyncing(true);
         setSyncMsg(null);
       }
-      const res = await fetch("/api/templates/sync", { method: "POST" }).catch(
+      const res = await fetchEmpresa("/api/templates/sync", { method: "POST" }).catch(
         () => null
       );
       if (!silent) setSyncing(false);
@@ -389,7 +390,7 @@ function CreateForm({
   async function create() {
     setSaving(true);
     setError(null);
-    const res = await fetch("/api/templates", {
+    const res = await fetchEmpresa("/api/templates", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

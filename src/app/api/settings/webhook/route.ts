@@ -5,6 +5,9 @@ import { isChannelEnabled } from "@/server/channels/enabled";
 import { registerWebhookForNumber } from "@/server/whatsapp/connect";
 import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
 import { webhookUrl, webhookVerifyToken } from "@/server/whatsapp/webhook-url";
+import { multiempresaActiva, multiempresaCanales } from "@/server/empresas/flag";
+import { direccionWebhookWhatsapp, registrarWhatsappDeEmpresa } from "@/server/whatsapp/credentials-multiempresa";
+import { respuestaErrorWhatsapp } from "@/server/whatsapp/connect-multiempresa";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +22,20 @@ export const dynamic = "force-dynamic";
  * viajan las tres URLs y la pantalla de cada canal enseña la suya. Las de un
  * canal apagado van en null: no existen en esta instancia (ADR-001).
  */
-export const GET = withAuth(async () => {
+export const GET = withAuth(async (session) => {
+  if (multiempresaActiva()) {
+    if (!multiempresaCanales()) return new Response(null, { status: 404 });
+    if (!canConfigure(session.role)) return apiError(403, "forbidden", "Solo quien administra puede ver el webhook");
+    const creds = await getCredentialsByOrg(session.organizationId);
+    const webhook = creds?.appId ? direccionWebhookWhatsapp(creds.id) : null;
+    return Response.json({
+      url: webhook?.url ?? null,
+      verifyToken: webhook?.verifyToken ?? null,
+      isHttps: webhook?.url.startsWith("https://") ?? false,
+      signatureLayer: Boolean(webhook),
+      instagramUrl: null, messengerUrl: null, tiktokUrl: null,
+    }, { headers: { "cache-control": "no-store" } });
+  }
   const env = getEnv();
   const url = webhookUrl("wa");
   return Response.json({
@@ -52,6 +68,20 @@ export const POST = withAuth(async (session, req: Request) => {
     recuperar = cuerpo?.recuperar === true;
   } catch {
     // Sin cuerpo: el registro de siempre.
+  }
+  if (multiempresaActiva()) {
+    if (!multiempresaCanales()) return new Response(null, { status: 404 });
+    if (!canConfigure(session.role)) return apiError(403, "forbidden", "Solo quien administra puede registrar el webhook");
+    if (recuperar) return apiError(409, "existing_webhook", "Gestiona la dirección anterior directamente en Meta.");
+    try {
+      const webhook = await registrarWhatsappDeEmpresa(session.organizationId);
+      if (!webhook.ok) {
+        return apiError(webhook.code === "meta_unavailable" ? 503 : 422, webhook.code, webhook.message);
+      }
+      return Response.json(webhook);
+    } catch (err) {
+      return respuestaErrorWhatsapp(err);
+    }
   }
   if (recuperar && !canConfigure(session.role)) {
     return apiError(403, "forbidden", "Solo quien administra puede recuperar el webhook");

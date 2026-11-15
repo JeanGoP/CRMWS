@@ -1,5 +1,6 @@
 import { apiError, withAuth } from "@/lib/api";
 import { channelsStatus } from "@/server/channels/status";
+import { multiempresaCanales } from "@/server/empresas/flag";
 import {
   ZERNIO_CHANNELS,
   ensureWebhookForOrg,
@@ -18,8 +19,8 @@ const haySociales = () => isChannelEnabled("telegram") || ZERNIO_CHANNELS.some((
  * 023 — Estado de los canales: conexión, última entrada y, con Zernio, la
  * salud de la cuenta y del webhook. Ni la llave ni el secreto salen de aquí.
  */
-export const GET = withAuth(async (session) => {
-  if (!haySociales()) return channelDisabledResponse();
+export const GET = withAuth(async (session, _req: Request) => {
+  if (!multiempresaCanales() && !haySociales()) return channelDisabledResponse();
   return Response.json({
     channels: await channelsStatus(session.organizationId),
     canManage: session.role === "owner",
@@ -32,7 +33,7 @@ export const GET = withAuth(async (session) => {
  * reintentar si Zernio falló y para las instalaciones anteriores a la 1.6.
  */
 export const POST = withAuth(async (session) => {
-  if (!haySociales()) return channelDisabledResponse();
+  if (multiempresaCanales() || !haySociales()) return channelDisabledResponse();
   if (session.role !== "owner") {
     return apiError(403, "forbidden", "Solo el propietario puede cambiar el webhook");
   }

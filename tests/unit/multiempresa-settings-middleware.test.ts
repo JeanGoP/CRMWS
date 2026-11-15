@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CABECERA_EMPRESA } from "@/lib/empresas-contexto";
 import { middleware } from "@/middleware";
 
 const origin = "https://hilora.example.test";
@@ -8,6 +9,7 @@ describe.each(["MULTIEMPRESA_PILOTO", "MULTIEMPRESA_PRODUCCION"])("Ajustes con %
   beforeEach(() => {
     vi.stubEnv("MULTIEMPRESA_PILOTO", undefined);
     vi.stubEnv("MULTIEMPRESA_PRODUCCION", undefined);
+    vi.stubEnv("MULTIEMPRESA_CANALES", undefined);
     vi.stubEnv(mode, "on");
   });
 
@@ -27,5 +29,64 @@ describe.each(["MULTIEMPRESA_PILOTO", "MULTIEMPRESA_PRODUCCION"])("Ajustes con %
   it("mantiene bloqueado el aviso público sin contexto de empresa", () => {
     const response = middleware(new NextRequest(`${origin}/aviso-datos`));
     expect(response.status).toBe(404);
+  });
+});
+
+describe("Canales en producción multiempresa", () => {
+  beforeEach(() => {
+    vi.stubEnv("MULTIEMPRESA_PILOTO", undefined);
+    vi.stubEnv("MULTIEMPRESA_PRODUCCION", "on");
+    vi.stubEnv("MULTIEMPRESA_CANALES", "on");
+  });
+
+  afterEach(() => vi.unstubAllEnvs());
+
+  it.each(["channels", "whatsapp", "telegram", "templates"])("deja abrir %s con sesión", (page) => {
+    const response = middleware(new NextRequest(`${origin}/settings/${page}`));
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it.each([
+    "/api/settings/whatsapp",
+    "/api/settings/telegram",
+    "/api/settings/channel-preference",
+  ])("exige el contexto de empresa para cambiar %s", (path) => {
+    expect(middleware(new NextRequest(`${origin}${path}`, { method: "PUT" })).status).toBe(409);
+    const response = middleware(new NextRequest(`${origin}${path}`, {
+      method: "PUT",
+      headers: { [CABECERA_EMPRESA]: "empresa-a" },
+    }));
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it.each(["wa/seguridad-del-numero", "telegram/12345"])("delega la autenticación de %s en su handler", (path) => {
+    const request = new NextRequest(`${origin}/api/webhooks/${path}`, { method: "POST" });
+    expect(middleware(request).headers.get("x-middleware-next")).toBe("1");
+    vi.stubEnv("MULTIEMPRESA_PRODUCCION", undefined);
+    vi.stubEnv("MULTIEMPRESA_PILOTO", "on");
+    expect(middleware(request).status).toBe(404);
+  });
+
+  it.each([
+    "/api/settings/channels",
+    "/api/webhooks/ig/no-configurado",
+    "/api/bot/messages",
+    "/api/contacts/contacto-a/start-conversation",
+  ])("mantiene bloqueado POST %s", (path) => {
+    const response = middleware(new NextRequest(`${origin}${path}`, {
+      method: "POST",
+      headers: { [CABECERA_EMPRESA]: "empresa-a" },
+    }));
+    expect(response.status).toBe(404);
+  });
+
+  it("permite responder en la bandeja solo con empresa explícita", () => {
+    const url = `${origin}/api/conversations/conversacion-a/messages`;
+    expect(middleware(new NextRequest(url, { method: "POST" })).status).toBe(409);
+    expect(middleware(new NextRequest(url, {
+      method: "POST",
+      headers: { [CABECERA_EMPRESA]: "empresa-a" },
+    })).headers.get("x-middleware-next")).toBe("1");
   });
 });

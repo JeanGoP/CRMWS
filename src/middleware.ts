@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { CABECERA_EMPRESA } from "@/lib/empresas-contexto";
-import { AJUSTES_DEL_PILOTO } from "@/lib/empresas-piloto";
-import { multiempresaActiva, multiempresaProduccion } from "@/server/empresas/flag";
+import { ajusteMultiempresaDisponible } from "@/lib/empresas-piloto";
+import { multiempresaActiva, multiempresaCanales, multiempresaProduccion } from "@/server/empresas/flag";
 
 const AUTH = new Set([
   "/api/auth/sign-in/email", "/api/auth/sign-up/email", "/api/auth/sign-out", "/api/auth/get-session",
@@ -19,6 +19,28 @@ const LECTURAS = new Set([
   "/api/branding/favicon", "/api/branding/app-icon",
 ]);
 
+const API_CANALES = new Map<string, readonly string[]>([
+  ["/api/settings/channels", ["GET", "HEAD"]],
+  ["/api/settings/whatsapp", ["GET", "HEAD", "PUT", "DELETE"]],
+  ["/api/settings/whatsapp/test", ["POST"]],
+  ["/api/settings/telegram", ["GET", "HEAD", "PUT"]],
+  ["/api/settings/webhook", ["GET", "HEAD", "POST"]],
+  ["/api/templates", ["POST"]],
+  ["/api/templates/sync", ["POST"]],
+]);
+
+function apiCanalesDisponible(path: string, method: string): boolean {
+  if (API_CANALES.get(path)?.includes(method)) return true;
+  return method === "POST" &&
+    /^\/api\/conversations\/[^/]+\/messages(?:\/(?:template|media|forward-image))?$/.test(path);
+}
+
+function esWebhookDeCanal(path: string, method: string): boolean {
+  // Cada handler verifica las credenciales del proveedor, fuera de la sesión de Hilora.
+  return (/^\/api\/webhooks\/wa\/[^/]+$/.test(path) && (method === "GET" || method === "POST")) ||
+    (/^\/api\/webhooks\/telegram\/[^/]+$/.test(path) && method === "POST");
+}
+
 function apiDisponible(path: string, lectura: boolean, produccion: boolean): boolean {
   if (produccion && (path === "/api/auth/sign-up/email" || path.startsWith("/api/agent/"))) return false;
   if (AUTH.has(path)) return true;
@@ -35,11 +57,12 @@ function apiDisponible(path: string, lectura: boolean, produccion: boolean): boo
 export function middleware(req: NextRequest) {
   if (!multiempresaActiva()) return NextResponse.next();
   const produccion = multiempresaProduccion();
+  const canales = multiempresaCanales();
   const path = req.nextUrl.pathname.replace(/\/$/, "");
   if (!path.startsWith("/api/")) {
     if (produccion && path === "/register") return NextResponse.redirect(new URL("/login", req.url));
     if (path.startsWith("/settings/")) {
-      return AJUSTES_DEL_PILOTO.has(path)
+      return ajusteMultiempresaDisponible(path, canales)
         ? NextResponse.next()
         : NextResponse.redirect(new URL("/settings", req.url));
     }
@@ -49,11 +72,12 @@ export function middleware(req: NextRequest) {
     return new NextResponse(null, { status: 404 });
   }
 
+  if (canales && esWebhookDeCanal(path, req.method)) return NextResponse.next();
   const lectura = req.method === "GET" || req.method === "HEAD";
-  if (!apiDisponible(path, lectura, produccion)) {
+  if (!apiDisponible(path, lectura, produccion) && !(canales && apiCanalesDisponible(path, req.method))) {
     return NextResponse.json({ error: {
       code: produccion ? "no_disponible" : "no_disponible_piloto",
-      message: produccion ? "Esta función no está habilitada en la gestión manual." : "Esta función está reservada para una fase posterior del piloto",
+      message: produccion ? "Esta función no está habilitada en esta instalación." : "Esta función está reservada para una fase posterior del piloto",
     } }, { status: 404 });
   }
   if (!lectura && !AUTH.has(path) && !req.headers.get(CABECERA_EMPRESA)) {

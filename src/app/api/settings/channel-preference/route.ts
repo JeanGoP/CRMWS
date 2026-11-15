@@ -3,10 +3,12 @@ import { apiError, parseBody, withAuth } from "@/lib/api";
 import { isChannelEnabled } from "@/server/channels/enabled";
 import { channelPreferenceFor, saveChannelPreference } from "@/server/channels/preference";
 import { telegramCredentialsForOrg } from "@/server/telegram/credentials";
+import { multiempresaCanales } from "@/server/empresas/flag";
+import { getCredentialsByOrg } from "@/server/whatsapp/credentials";
 
 export const dynamic = "force-dynamic";
 
-export const GET = withAuth(async (session) => {
+export const GET = withAuth(async (session, _req: Request) => {
   return Response.json({ preference: await channelPreferenceFor(session.organizationId),
     telegramAvailable: isChannelEnabled("telegram"), canManage: session.role === "owner" });
 });
@@ -17,7 +19,16 @@ export const PUT = withAuth(async (session, req: Request) => {
   const body = await parseBody(req, bodySchema);
   if (!body.ok) return body.response;
   const value = body.data;
-  if (!value.whatsapp && !value.telegram) return apiError(422, "no_channels", "Deja al menos un canal activo");
+  const multiempresa = multiempresaCanales();
+  if (!multiempresa && !value.whatsapp && !value.telegram) {
+    return apiError(422, "no_channels", "Deja al menos un canal activo");
+  }
+  if (multiempresa && value.whatsapp) {
+    const creds = await getCredentialsByOrg(session.organizationId);
+    if (creds?.status !== "connected") {
+      return apiError(409, "whatsapp_not_connected", "Conecta un número de WhatsApp antes de activarlo");
+    }
+  }
   if (value.telegram) {
     if (!isChannelEnabled("telegram")) return apiError(422, "telegram_unavailable", "Telegram no está disponible en esta instalación");
     const creds = await telegramCredentialsForOrg(session.organizationId);

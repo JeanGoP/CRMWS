@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { mockGuard } from "@/lib/dev-guard";
 import { apiError, parseBody } from "@/lib/api";
@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
   waMessageId: z.string().min(1),
+  organizationId: z.string().min(1).optional(),
   status: z.enum(["sent", "delivered", "read", "failed"]),
   /** Reproduce el `errors[]` que Meta adjunta a los `failed`. */
   errorCode: z.number().int().optional(),
@@ -31,9 +32,13 @@ export async function POST(req: Request) {
   const rows = await db
     .select({ organizationId: schema.message.organizationId })
     .from(schema.message)
-    .where(eq(schema.message.waMessageId, body.data.waMessageId))
-    .limit(1);
+    .where(and(
+      eq(schema.message.waMessageId, body.data.waMessageId),
+      body.data.organizationId ? eq(schema.message.organizationId, body.data.organizationId) : undefined
+    ))
+    .limit(2);
   if (!rows[0]) return apiError(404, "not_found", "Mensaje no encontrado");
+  if (rows.length > 1) return apiError(409, "ambiguous", "Indica la organización del mensaje.");
 
   const creds = await getCredentialsByOrg(rows[0].organizationId);
   if (!creds) return apiError(409, "not_connected", "Sin número conectado");

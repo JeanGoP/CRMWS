@@ -20,12 +20,13 @@ export async function recibirEvento(
   fuente: FuenteWebhook,
   payload: unknown,
   rawBody: string,
-  etiqueta: string
+  etiqueta: string,
+  organizationIdVerificada?: string
 ): Promise<Response> {
   let organizationId: string | null;
   let evento: { id: string; nuevo: boolean };
   try {
-    organizationId = await resolverOrganizacion(fuente, payload);
+    organizationId = organizationIdVerificada ?? await resolverOrganizacion(fuente, payload);
     if (!organizationId) {
       after(async () => {
         try {
@@ -36,7 +37,11 @@ export async function recibirEvento(
       });
       return Response.json({ received: true });
     }
-    evento = await guardarEvento({ organizationId, fuente, payload, rawBody });
+    // En multiempresa una misma entrega solo es duplicada dentro de su vínculo.
+    const cuerpoHuella = organizationIdVerificada
+      ? JSON.stringify([fuente, organizationIdVerificada, payload])
+      : rawBody;
+    evento = await guardarEvento({ organizationId, fuente, payload, rawBody: cuerpoHuella });
   } catch (err) {
     console.error(
       `[${etiqueta}] no se pudo guardar el evento; se responde 503 para que la fuente reintente:`,
