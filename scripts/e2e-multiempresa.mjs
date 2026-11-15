@@ -171,10 +171,14 @@ async function probar() {
   });
   const tableroTurismo = await admin("/api/pipeline/stages");
   const ganada = tableroTurismo.stages.find(({ kind }) => kind === "won");
-  assert.ok(ganada, "La empresa nueva tiene un tablero inicial");
+  const perdida = tableroTurismo.stages.find(({ kind }) => kind === "lost");
+  assert.ok(ganada && perdida, "La empresa nueva tiene un tablero inicial");
   const { stage: confirmada } = await admin(`/api/pipeline/stages/${ganada.id}`, {
     method: "PATCH", empresa: empresaB,
     body: { name: "Reserva confirmada", position: porVerificar.position + 1 },
+  });
+  await admin(`/api/pipeline/stages/${perdida.id}`, {
+    method: "PATCH", empresa: empresaB, body: { position: confirmada.position + 1 },
   });
   assert.equal(confirmada.kind, "won");
   await admin(`/api/pipeline/leads/${creadoB.lead.id}`, {
