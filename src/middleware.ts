@@ -38,8 +38,10 @@ export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname.replace(/\/$/, "");
   if (!path.startsWith("/api/")) {
     if (produccion && path === "/register") return NextResponse.redirect(new URL("/login", req.url));
-    if (path.startsWith("/settings/") && !AJUSTES_DEL_PILOTO.has(path)) {
-      return NextResponse.redirect(new URL("/settings", req.url));
+    if (path.startsWith("/settings/")) {
+      return AJUSTES_DEL_PILOTO.has(path)
+        ? NextResponse.next()
+        : NextResponse.redirect(new URL("/settings", req.url));
     }
     if (path === "/lab" || path === "/onboarding") {
       return NextResponse.redirect(new URL("/empresas", req.url));
