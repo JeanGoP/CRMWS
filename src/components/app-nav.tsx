@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -49,6 +50,7 @@ export function navItemClass(active: boolean) {
 
 export function AppNav({
   branding,
+  empresa,
   userName,
   role,
   theme,
@@ -59,6 +61,7 @@ export function AppNav({
   onClose,
 }: {
   branding: Branding;
+  empresa?: string;
   userName: string;
   role: string;
   theme: ThemePreference;
@@ -88,7 +91,7 @@ export function AppNav({
   const [sonido, setSonido] = useState(true);
 
   async function refetchUnread() {
-    const res = await fetch("/api/conversations").catch(() => null);
+    const res = await fetchEmpresa("/api/conversations").catch(() => null);
     if (!res?.ok) return;
     const data = (await res.json()) as {
       conversations: { unreadCount: number }[];
@@ -117,7 +120,7 @@ export function AppNav({
   const version = commit ?? { commit: BUILD_COMMIT, verified: BUILD_COMMIT !== "" };
   // #87 — Qué hay en el menú y en qué grupo lo decide `appNavGroups`; aquí
   // solo se pinta.
-  const groups = appNavGroups({ agenda, role });
+  const groups = appNavGroups({ agenda, role, multiempresa: Boolean(empresa) });
 
   function renderItem(item: NavItem) {
     const active = isNavActive(pathname, item.href);
@@ -133,7 +136,12 @@ export function AppNav({
           strokeWidth={1.8}
           aria-hidden
         />
-        <span className="flex-1">{item.label}</span>
+        <span className="min-w-0 flex-1">
+          {item.label}
+          {item.href === "/empresas" && empresa && (
+            <span className="block truncate text-xs font-normal text-text-3">{empresa}</span>
+          )}
+        </span>
         {item.badge && unread > 0 && (
           <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand px-1.5 text-[10.5px] font-bold text-brand-fg">
             {unread}

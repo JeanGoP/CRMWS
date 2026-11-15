@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEvents } from "@/components/use-events";
 import { Switch } from "@/components/ui/switch";
@@ -136,7 +137,7 @@ export function BookingsClient({
     const [from, to] = key.split("|") as [string, string];
     const id = ++seq.current;
     setLoading(true);
-    const res = await fetch(`/api/bookings?from=${from}&to=${to}`).catch(() => null);
+    const res = await fetchEmpresa(`/api/bookings?from=${from}&to=${to}`).catch(() => null);
     const data = res?.ok
       ? ((await res.json().catch(() => null)) as {
           bookings: Booking[];
@@ -290,7 +291,7 @@ export function BookingsClient({
   }
 
   async function act(b: Booking, body: Record<string, unknown>): Promise<ActResult> {
-    const res = await fetch(`/api/bookings/${b.id}`, {
+    const res = await fetchEmpresa(`/api/bookings/${b.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),

@@ -1,4 +1,5 @@
 import { requireSession, UnauthorizedError } from "@/lib/auth/session";
+import { multiempresaActiva } from "@/server/empresas/flag";
 import { subscribe } from "@/server/events/bus";
 
 /**
@@ -22,6 +23,9 @@ export async function GET(req: Request) {
     throw err;
   }
   const { organizationId } = session;
+  if (multiempresaActiva() && new URL(req.url).searchParams.get("empresa") !== organizationId) {
+    return new Response(null, { status: 204 });
+  }
 
   let cleanup: (() => void) | null = null;
 

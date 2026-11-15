@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { apiError, withAuth } from "@/lib/api";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
+import { multiempresaActiva } from "@/server/empresas/flag";
 import { ensureAssetAvailable, leerAdjunto } from "@/server/whatsapp/media";
 import { mediaResponseHeaders } from "@/server/whatsapp/media-headers";
 
@@ -63,7 +64,9 @@ export const GET = withAuth(async (session, _req: Request, ctx: Params) => {
     );
   }
   // #78: nosniff + CSP sandbox siempre; inline solo para lo previsualizable.
+  const headers = mediaResponseHeaders(leido.asset, leido.data.byteLength);
+  if (multiempresaActiva()) headers["cache-control"] = "no-store";
   return new Response(new Uint8Array(leido.data), {
-    headers: mediaResponseHeaders(leido.asset, leido.data.byteLength),
+    headers,
   });
 });

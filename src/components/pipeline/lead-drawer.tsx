@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MessageSquareText, X } from "lucide-react";
@@ -57,7 +58,7 @@ export function LeadDrawer({
   const moneda = lead.currency ?? currency;
 
   const cargarFicha = useCallback(async () => {
-    const detail = await fetch(`/api/contacts/${contactId}`)
+    const detail = await fetchEmpresa(`/api/contacts/${contactId}`)
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null);
     setFicha(detail?.contact?.ficha ?? {});
@@ -92,7 +93,7 @@ export function LeadDrawer({
       }
       return next;
     });
-    await fetch(`/api/contacts/${contactId}`, {
+    await fetchEmpresa(`/api/contacts/${contactId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ficha: patch }),

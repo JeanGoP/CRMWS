@@ -1,4 +1,4 @@
-import { count, eq, sql } from "drizzle-orm";
+import { and, asc, count, eq, sql } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 
@@ -10,6 +10,19 @@ const SEED_STAGES: { name: string; kind: "open" | "won" | "lost" }[] = [
   { name: "Cliente", kind: "won" },
   { name: "Perdido", kind: "lost" },
 ];
+
+type EmpresaTx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+
+export async function sembrarEmpresa(tx: EmpresaTx, orgId: string) {
+  await tx.insert(schema.pipelineStage).values(
+    SEED_STAGES.map((stage, position) => ({
+      ...stage, id: newId("stage"), organizationId: orgId, position,
+    }))
+  );
+  await tx.insert(schema.agentProfile).values({
+    id: newId("agentProfile"), organizationId: orgId,
+  });
+}
 
 /**
  * Primer registro de la instancia: crea la organización, deja al usuario como
@@ -42,19 +55,7 @@ export async function onUserCreated(userId: string, userName: string) {
       userId,
       role: "owner",
     });
-    await tx.insert(schema.pipelineStage).values(
-      SEED_STAGES.map((s, i) => ({
-        id: newId("stage"),
-        organizationId: orgId,
-        name: s.name,
-        position: i,
-        kind: s.kind,
-      }))
-    );
-    await tx.insert(schema.agentProfile).values({
-      id: newId("agentProfile"),
-      organizationId: orgId,
-    });
+    await sembrarEmpresa(tx, orgId);
   });
 }
 
@@ -66,7 +67,8 @@ export async function resolveActiveOrganizationId(
 }
 
 export async function resolveMembership(
-  userId: string
+  userId: string,
+  organizationId?: string
 ): Promise<{ organizationId: string; role: string } | null> {
   const db = getDb();
   const rows = await db
@@ -75,7 +77,11 @@ export async function resolveMembership(
       role: schema.member.role,
     })
     .from(schema.member)
-    .where(eq(schema.member.userId, userId))
+    .where(and(
+      eq(schema.member.userId, userId),
+      organizationId ? eq(schema.member.organizationId, organizationId) : undefined
+    ))
+    .orderBy(asc(schema.member.createdAt), asc(schema.member.id))
     .limit(1);
   return rows[0] ?? null;
 }

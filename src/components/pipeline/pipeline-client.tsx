@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -65,7 +66,7 @@ export function PipelineClient() {
   );
 
   const refetch = useCallback(async () => {
-    const res = await fetch("/api/pipeline/board").catch(() => null);
+    const res = await fetchEmpresa("/api/pipeline/board").catch(() => null);
     if (!res?.ok) return;
     const data = (await res.json()) as {
       stages: StageDto[];
@@ -96,7 +97,7 @@ export function PipelineClient() {
     setLeads((prev) =>
       prev.map((l) => (l.id === leadId ? { ...l, stageId: overStage, position } : l))
     );
-    await fetch(`/api/pipeline/leads/${leadId}`, {
+    await fetchEmpresa(`/api/pipeline/leads/${leadId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -114,7 +115,7 @@ export function PipelineClient() {
     setLeads((prev) =>
       prev.map((l) => (l.id === leadId ? { ...l, amountCents: cents } : l))
     );
-    await fetch(`/api/pipeline/leads/${leadId}`, {
+    await fetchEmpresa(`/api/pipeline/leads/${leadId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       // Sin `stageId`: esto NO mueve la tarjeta, solo escribe el importe.
@@ -127,7 +128,7 @@ export function PipelineClient() {
     setLeads((prev) =>
       prev.map((l) => (l.id === leadId ? { ...l, priority } : l))
     );
-    await fetch(`/api/pipeline/leads/${leadId}`, {
+    await fetchEmpresa(`/api/pipeline/leads/${leadId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ priority }),

@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useRef, useState } from "react";
 import type { ConversationDto, MessageDto } from "@/lib/types";
 import { CHANNEL_LABEL } from "@/lib/channels";
@@ -56,7 +57,7 @@ export function ForwardImageDialog({
     setSending(true);
     setError(null);
     try {
-      const res = await fetch(
+      const res = await fetchEmpresa(
         `/api/conversations/${selected.id}/messages/forward-image`,
         {
           method: "POST",

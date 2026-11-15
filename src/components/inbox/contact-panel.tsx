@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -87,7 +88,7 @@ export function ContactPanel({
   // Aparte del resto: consultar el /health del cerebro externo puede tardar
   // hasta 2 s, y eso no debe demorar la etapa ni la ficha.
   const loadBrain = useCallback(async () => {
-    const b = await fetch("/api/agent/brain-status")
+    const b = await fetchEmpresa("/api/agent/brain-status")
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null);
     if (b) setBrain(b);
@@ -97,8 +98,8 @@ export function ContactPanel({
   const refetch = useCallback(async () => {
     void loadBrain();
     const [detail, stagesRes] = await Promise.all([
-      fetch(`/api/contacts/${contactId}`).then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/pipeline/stages").then((r) => (r.ok ? r.json() : null)),
+      fetchEmpresa(`/api/contacts/${contactId}`).then((r) => (r.ok ? r.json() : null)),
+      fetchEmpresa("/api/pipeline/stages").then((r) => (r.ok ? r.json() : null)),
     ]).catch(() => [null, null]);
     if (detail) {
       setNotes(detail.contact?.notes ?? "");
@@ -115,7 +116,7 @@ export function ContactPanel({
   // no pisar lo que el operador esté escribiendo. Lo dispara el SSE.
   const refreshLive = useCallback(async () => {
     void loadBrain();
-    const detail = await fetch(`/api/contacts/${contactId}`)
+    const detail = await fetchEmpresa(`/api/contacts/${contactId}`)
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null);
     if (detail) {
@@ -146,7 +147,7 @@ export function ContactPanel({
   async function moveToStage(stageId: string) {
     if (!leadId || stageId === currentStageId) return;
     setCurrentStageId(stageId); // optimista
-    await fetch(`/api/pipeline/leads/${leadId}`, {
+    await fetchEmpresa(`/api/pipeline/leads/${leadId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ stageId, position: 0 }),
@@ -164,7 +165,7 @@ export function ContactPanel({
       }
       return next; // optimista: el refetch de abajo confirma
     });
-    await fetch(`/api/contacts/${contactId}`, {
+    await fetchEmpresa(`/api/contacts/${contactId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ ficha: patch }),
@@ -174,7 +175,7 @@ export function ContactPanel({
 
   async function saveNotes() {
     setSavingNotes(true);
-    await fetch(`/api/contacts/${contactId}`, {
+    await fetchEmpresa(`/api/contacts/${contactId}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ notes }),

@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useState } from "react";
 import { templateLanguageName } from "@/lib/template-languages";
 import type { TemplateDto } from "@/lib/types";
@@ -27,7 +28,7 @@ export function TemplateSender({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/templates")
+    fetchEmpresa("/api/templates")
       .then((r) => (r.ok ? r.json() : { templates: [] }))
       .then((d: { templates?: TemplateDto[] }) => {
         if (!cancelled) {
@@ -71,7 +72,7 @@ export function TemplateSender({
     if (!selected || sending) return;
     setSending(true);
     setError(null);
-    const res = await fetch(
+    const res = await fetchEmpresa(
       `/api/conversations/${conversationId}/messages/template`,
       {
         method: "POST",

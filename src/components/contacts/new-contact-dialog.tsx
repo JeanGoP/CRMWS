@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useState } from "react";
 import type { SourceValue, StageDto } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ export function NewContactDialog({
 
   useEffect(() => {
     void (async () => {
-      const res = await fetch("/api/pipeline/stages").catch(() => null);
+      const res = await fetchEmpresa("/api/pipeline/stages").catch(() => null);
       if (!res?.ok) return;
       const data = (await res.json()) as { stages: StageDto[] };
       const abiertas = data.stages.filter((s) => s.kind === "open");
@@ -56,7 +57,7 @@ export function NewContactDialog({
     setSaving(true);
     setError(null);
     setDuplicado(null);
-    const res = await fetch("/api/contacts", {
+    const res = await fetchEmpresa("/api/contacts", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

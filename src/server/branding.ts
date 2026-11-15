@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { multiempresaActiva } from "@/server/empresas/flag";
 import { getDb, schema } from "@/lib/db";
 import {
   DEFAULT_BRANDING,
@@ -30,6 +31,9 @@ function parseMetadata(metadata: string | null): Record<string, unknown> {
 export async function getBrandingContext(
   organizationId?: string | null
 ): Promise<{ organizationId: string | null; branding: Branding }> {
+  if (!organizationId && multiempresaActiva()) {
+    return { organizationId: null, branding: { ...DEFAULT_BRANDING, name: "Hilora" } };
+  }
   const db = getDb();
   const rows = organizationId
     ? await db

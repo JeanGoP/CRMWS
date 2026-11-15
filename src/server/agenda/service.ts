@@ -107,7 +107,6 @@ export async function createSessionBooking(input: {
   // Contexto de la conversación: contacto y si es del Laboratorio.
   let isTest = false;
   let contactId = input.contactId ?? null;
-  let contactName = "";
   if (input.conversationId) {
     const rows = await db
       .select({
@@ -125,14 +124,20 @@ export async function createSessionBooking(input: {
       .limit(1);
     const conv = rows[0];
     if (!conv) throw new BookingError("not_found", "Conversación no encontrada");
+    if (contactId && contactId !== conv.contactId) {
+      throw new BookingError("not_found", "Contacto no encontrado en la conversación");
+    }
     isTest = conv.isTest;
-    contactId = contactId ?? conv.contactId;
+    contactId = conv.contactId;
   }
 
   if (!contactId) {
     throw new BookingError("invalid", "La cita necesita un contacto");
   }
-  contactName = await getContactName(input.organizationId, contactId);
+  const contactName = await getContactName(input.organizationId, contactId);
+  if (contactName === null) {
+    throw new BookingError("not_found", "Contacto no encontrado");
+  }
 
   // REGLA 1: solo se reserva lo que se ofreció.
   if (input.requireOffer) {
@@ -487,8 +492,8 @@ export async function retryMeetingLink(input: {
   const settings = await getSettings(input.organizationId);
   const contactName = booking.contactId
     ? await getContactName(input.organizationId, booking.contactId)
-    : "";
-  const delivered = await deliverMeeting(booking, settings, contactName);
+    : null;
+  const delivered = await deliverMeeting(booking, settings, contactName ?? "");
 
   publish(input.organizationId, {
     type: "booking.updated",
@@ -670,7 +675,7 @@ async function getOwnBooking(
 async function getContactName(
   organizationId: string,
   contactId: string
-): Promise<string> {
+): Promise<string | null> {
   const db = getDb();
   const rows = await db
     .select({ name: schema.contact.name })
@@ -683,7 +688,7 @@ async function getContactName(
       )
     )
     .limit(1);
-  return rows[0]?.name ?? "";
+  return rows[0]?.name ?? null;
 }
 
 /**

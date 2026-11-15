@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
@@ -54,7 +55,7 @@ export function AgentClient() {
   const [brain, setBrain] = useState<BrainStatusDto | null>(null);
 
   const loadBrain = useCallback(async () => {
-    const b = await fetch("/api/agent/brain-status")
+    const b = await fetchEmpresa("/api/agent/brain-status")
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null);
     setBrain(b);
@@ -62,9 +63,9 @@ export function AgentClient() {
 
   const refetch = useCallback(async () => {
     const [p, kb, size] = await Promise.all([
-      fetch("/api/agent/profile").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/kb").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/kb/size").then((r) => (r.ok ? r.json() : null)),
+      fetchEmpresa("/api/agent/profile").then((r) => (r.ok ? r.json() : null)),
+      fetchEmpresa("/api/kb").then((r) => (r.ok ? r.json() : null)),
+      fetchEmpresa("/api/kb/size").then((r) => (r.ok ? r.json() : null)),
       loadBrain(),
     ]).catch(() => [null, null, null]);
     if (p) {
@@ -99,7 +100,7 @@ export function AgentClient() {
       `Cargar el rol «${ROLES.calificador.etiqueta}» reemplaza las instrucciones y las reglas de escalado, y enciende todas sus herramientas. ¿Continuar?`
     );
     if (!ok) return;
-    await fetch("/api/agent/profile/preset", {
+    await fetchEmpresa("/api/agent/profile/preset", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ role: "calificador" }),
@@ -110,7 +111,7 @@ export function AgentClient() {
   }
 
   async function saveProfile(patch: Partial<Profile>): Promise<boolean> {
-    const res = await fetch("/api/agent/profile", {
+    const res = await fetchEmpresa("/api/agent/profile", {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(patch),
@@ -384,7 +385,7 @@ function KbSection({
 
   async function addQa() {
     if (!question.trim() || !answer.trim()) return;
-    await fetch("/api/kb", {
+    await fetchEmpresa("/api/kb", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ kind: "qa", question, answer }),
@@ -396,7 +397,7 @@ function KbSection({
 
   async function addBlock() {
     if (!block.trim()) return;
-    await fetch("/api/kb", {
+    await fetchEmpresa("/api/kb", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ kind: "block", content: block }),
@@ -406,7 +407,7 @@ function KbSection({
   }
 
   async function remove(id: string) {
-    await fetch(`/api/kb/${id}`, { method: "DELETE" }).catch(() => null);
+    await fetchEmpresa(`/api/kb/${id}`, { method: "DELETE" }).catch(() => null);
     onChanged();
   }
 

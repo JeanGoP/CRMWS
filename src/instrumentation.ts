@@ -1,3 +1,5 @@
+import { multiempresaActiva } from "@/server/empresas/flag";
+
 /**
  * Hook de arranque de Next. El trabajo real vive en instrumentation-node.ts
  * (import dinámico condicionado al runtime para que el bundler edge no
@@ -14,6 +16,7 @@ export async function register(): Promise<void> {
       resumeReminders,
     } = await import("./instrumentation-node");
     await checkMediaDir();
+    if (multiempresaActiva()) return;
     await cleanupOrphanRuns();
     await encryptLegacySecrets();
     resumeDispatch();
