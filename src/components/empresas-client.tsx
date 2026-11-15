@@ -37,7 +37,7 @@ async function enviarFormulario(ruta: string, datos: object, mensaje: string) {
   throw new Error(body?.error?.message ?? mensaje);
 }
 
-export function EmpresasClient() {
+export function EmpresasClient({ piloto = false }: { piloto?: boolean }) {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [nombre, setNombre] = useState("");
   const [creando, setCreando] = useState(false);
@@ -97,7 +97,7 @@ export function EmpresasClient() {
         <header>
           <h1 className="text-2xl font-bold tracking-tight">Empresas</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Piloto con datos ficticios. Elige la empresa en la que quieres trabajar.
+            {piloto ? "Piloto con datos ficticios. Elige la empresa en la que quieres trabajar." : "Elige la empresa en la que quieres trabajar."}
           </p>
         </header>
 

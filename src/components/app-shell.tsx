@@ -30,6 +30,7 @@ export function AppShell({
   theme,
   commit,
   agenda = false,
+  gestionManual = false,
   kicker,
   aviso = null,
   children,
@@ -43,6 +44,7 @@ export function AppShell({
   commit?: ResolvedCommit;
   /** 015 — ¿esta instancia tiene agenda? Lo decide el servidor. */
   agenda?: boolean;
+  gestionManual?: boolean;
   /** 028 — La etiqueta bajo el logo (`navKicker`). */
   kicker?: string;
   /**
@@ -109,6 +111,7 @@ export function AppShell({
         role={role}
         theme={theme}
         agenda={agenda}
+        gestionManual={gestionManual}
         kicker={kicker}
         open={navOpen}
         onClose={() => setNavOpen(false)}

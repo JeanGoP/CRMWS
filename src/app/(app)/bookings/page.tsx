@@ -5,6 +5,7 @@ import { clampListTo, isCalendarView, isIsoDate } from "@/lib/time/calendar";
 import { todayInTz } from "@/lib/time/slots";
 import { agendaEnabled } from "@/server/agenda/flag";
 import { getSettings } from "@/server/agenda/settings";
+import { multiempresaProduccion } from "@/server/empresas/flag";
 
 export const dynamic = "force-dynamic";
 
@@ -50,6 +51,7 @@ export default async function BookingsPage({
       }
       timezone={settings.timezone}
       weeklyHours={settings.weeklyHours}
+      permiteCrearCita={multiempresaProduccion()}
     />
   );
 }

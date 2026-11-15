@@ -31,7 +31,7 @@ type Profile = {
   tools: ClaveHerramienta[];
 };
 
-type KbEntry = {
+export type KbEntry = {
   id: string;
   kind: "qa" | "block";
   question: string | null;
@@ -370,14 +370,16 @@ function ProfileSection({
   );
 }
 
-function KbSection({
+export function KbSection({
   entries,
   kbSize,
   onChanged,
+  catalogo = false,
 }: {
   entries: KbEntry[];
   kbSize: { chars: number; warnAt: number; warning: boolean } | null;
   onChanged: () => void;
+  catalogo?: boolean;
 }) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -416,10 +418,10 @@ function KbSection({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Knowledge base</CardTitle>
+            <CardTitle>{catalogo ? "Información de la empresa" : "Knowledge base"}</CardTitle>
             <CardDescription>
-              La única fuente de verdad del agente: lo que no está aquí, no lo
-              afirma.
+              {catalogo ? "Guarda los servicios, precios y condiciones que usa tu equipo al cotizar."
+                : "La única fuente de verdad del agente: lo que no está aquí, no lo afirma."}
             </CardDescription>
           </div>
           {kbSize && (

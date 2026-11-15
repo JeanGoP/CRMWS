@@ -89,4 +89,16 @@ RUN sed -i 's/\r$//' /usr/local/bin/piloto-entrypoint.sh \
     && chmod 755 /usr/local/bin/piloto-entrypoint.sh
 CMD ["/usr/local/bin/piloto-entrypoint.sh"]
 
+FROM builder AS multiempresa-builder
+RUN pnpm exec esbuild scripts/seed/multiempresa.ts --bundle --platform=node \
+    --format=esm --outfile=seed-multiempresa.bundle.mjs --alias:@=./src \
+    --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);"
+
+FROM runner AS multiempresa
+COPY --from=multiempresa-builder --chown=vocero:vocero /app/seed-multiempresa.bundle.mjs ./seed-multiempresa.mjs
+COPY multiempresa-entrypoint.sh /usr/local/bin/multiempresa-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/multiempresa-entrypoint.sh \
+    && chmod 755 /usr/local/bin/multiempresa-entrypoint.sh
+CMD ["/usr/local/bin/multiempresa-entrypoint.sh"]
+
 FROM runner AS produccion

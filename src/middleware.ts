@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { CABECERA_EMPRESA } from "@/lib/empresas-contexto";
 import { AJUSTES_DEL_PILOTO } from "@/lib/empresas-piloto";
-import { multiempresaActiva } from "@/server/empresas/flag";
+import { multiempresaActiva, multiempresaProduccion } from "@/server/empresas/flag";
 
 const AUTH = new Set([
   "/api/auth/sign-in/email", "/api/auth/sign-up/email", "/api/auth/sign-out", "/api/auth/get-session",
@@ -19,7 +19,8 @@ const LECTURAS = new Set([
   "/api/branding/favicon", "/api/branding/app-icon",
 ]);
 
-function apiDisponible(path: string, lectura: boolean): boolean {
+function apiDisponible(path: string, lectura: boolean, produccion: boolean): boolean {
+  if (produccion && (path === "/api/auth/sign-up/email" || path.startsWith("/api/agent/"))) return false;
   if (AUTH.has(path)) return true;
   if (LECTURAS.has(path)) return lectura;
   if (path === "/api/settings/cartera") return true;
@@ -33,8 +34,10 @@ function apiDisponible(path: string, lectura: boolean): boolean {
 
 export function middleware(req: NextRequest) {
   if (!multiempresaActiva()) return NextResponse.next();
+  const produccion = multiempresaProduccion();
   const path = req.nextUrl.pathname.replace(/\/$/, "");
   if (!path.startsWith("/api/")) {
+    if (produccion && path === "/register") return NextResponse.redirect(new URL("/login", req.url));
     if (path.startsWith("/settings/") && !AJUSTES_DEL_PILOTO.has(path)) {
       return NextResponse.redirect(new URL("/settings", req.url));
     }
@@ -45,9 +48,10 @@ export function middleware(req: NextRequest) {
   }
 
   const lectura = req.method === "GET" || req.method === "HEAD";
-  if (!apiDisponible(path, lectura)) {
+  if (!apiDisponible(path, lectura, produccion)) {
     return NextResponse.json({ error: {
-      code: "no_disponible_piloto", message: "Esta función está reservada para una fase posterior del piloto",
+      code: produccion ? "no_disponible" : "no_disponible_piloto",
+      message: produccion ? "Esta función no está habilitada en la gestión manual." : "Esta función está reservada para una fase posterior del piloto",
     } }, { status: 404 });
   }
   if (!lectura && !AUTH.has(path) && !req.headers.get(CABECERA_EMPRESA)) {
@@ -64,5 +68,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*", "/settings/:path+", "/lab", "/onboarding", "/aviso-datos"],
+  matcher: ["/api/:path*", "/settings/:path+", "/lab", "/onboarding", "/aviso-datos", "/register"],
 };

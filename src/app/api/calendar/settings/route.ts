@@ -66,7 +66,7 @@ export const PUT = withAuth(async (session, req: Request) => {
   if (!body.ok) return body.response;
   if (multiempresaActiva() && (body.data.reminderEnabled ||
     (body.data.connector && body.data.connector !== "enlace-fijo"))) {
-    return apiError(409, "solo_agenda_interna", "El piloto usa la agenda interna con los recordatorios apagados");
+    return apiError(409, "solo_agenda_interna", "La gestión manual usa la agenda interna sin recordatorios automáticos");
   }
 
   try {

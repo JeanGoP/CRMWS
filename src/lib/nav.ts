@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Building2,
   CalendarDays,
   ChartColumn,
@@ -52,12 +53,14 @@ export function appNavGroups({
   agenda = false,
   role,
   multiempresa = false,
+  gestionManual = false,
 }: {
   /** 015 — "Citas" solo existe si esta instancia encendió la agenda. */
   agenda?: boolean;
   /** #86 — La guía de inicio solo para quien puede configurar. */
   role?: string | null;
   multiempresa?: boolean;
+  gestionManual?: boolean;
 }): NavGroup[] {
   const trabajo: NavItem[] = [
     { href: "/inbox", label: "Bandeja", icon: Inbox, badge: true },
@@ -67,6 +70,7 @@ export function appNavGroups({
   // Citas va después de Contactos: es el paso siguiente de un trato, no una
   // sección aparte.
   if (agenda) trabajo.push({ href: "/bookings", label: "Citas", icon: CalendarDays });
+  if (gestionManual) trabajo.push({ href: "/agent", label: "Catálogo", icon: BookOpen });
 
   const agente: NavItem[] = [];
   // Un miembro del equipo no puede hacer ninguno de los pasos de la guía.
@@ -80,7 +84,7 @@ export function appNavGroups({
   return [
     ...(multiempresa ? [empresas] : []),
     { title: "Trabajo", items: trabajo },
-    { title: "Agente", items: agente },
+    ...(gestionManual ? [] : [{ title: "Agente", items: agente }]),
     // 019 — Se mide al final: primero se atiende y se organiza.
     { items: [{ href: "/results", label: "Resultados", icon: ChartColumn }] },
   ];

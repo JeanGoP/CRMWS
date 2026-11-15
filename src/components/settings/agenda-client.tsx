@@ -328,7 +328,7 @@ export function AgendaClient({ piloto = false }: { piloto?: boolean }) {
         <CardHeader>
           <CardTitle>Calendario para las citas</CardTitle>
           <CardDescription>
-            {piloto ? "En el piloto las citas se guardan en el calendario interno de cada empresa."
+            {piloto ? "Las citas se guardan en el calendario interno de cada empresa."
               : "Elige dónde consultar la disponibilidad y guardar nuevas citas. Google y Microsoft son opcionales y requieren conectar la cuenta de cada negocio."}
           </CardDescription>
         </CardHeader>
