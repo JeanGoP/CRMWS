@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AJUSTES_DEL_PILOTO } from "@/lib/empresas-piloto";
 import { cn } from "@/lib/utils";
 import { settingsSections } from "@/lib/nav";
 
@@ -23,6 +24,7 @@ export function SettingsNav({
   tiktok = false,
   telegram = false,
   cartera = false,
+  piloto = false,
 }: {
   agenda?: boolean;
   atribucion?: boolean;
@@ -31,15 +33,19 @@ export function SettingsNav({
   tiktok?: boolean;
   telegram?: boolean;
   cartera?: boolean;
+  piloto?: boolean;
 }) {
   const pathname = usePathname();
   const sections = settingsSections({ agenda, atribucion, instagram, messenger, tiktok, telegram, cartera });
+  const visibles = piloto ? sections
+    .map((grupo) => ({ ...grupo, links: grupo.links.filter(({ href }) => AJUSTES_DEL_PILOTO.has(href)) }))
+    .filter(({ links }) => links.length > 0) : sections;
   return (
     <nav
       aria-label="Ajustes"
       className="flex shrink-0 gap-4 overflow-x-auto border-b px-2 py-2 sm:w-48 sm:flex-col sm:gap-5 sm:overflow-visible sm:border-b-0 sm:border-r sm:p-3"
     >
-      {sections.map((section) => (
+      {visibles.map((section) => (
         <div
           key={section.title}
           className="flex shrink-0 items-center gap-1 sm:flex-col sm:items-stretch sm:gap-0.5"

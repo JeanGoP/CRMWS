@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useCallback, useEffect, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ export function QuickRepliesClient() {
   const [guardando, setGuardando] = useState(false);
 
   const cargar = useCallback(async () => {
-    const res = await fetch("/api/quick-replies").catch(() => null);
+    const res = await fetchEmpresa("/api/quick-replies").catch(() => null);
     if (!res?.ok) return;
     const d = (await res.json()) as { respuestas: RespuestaRapida[]; puedeEditar: boolean };
     setLista(d.respuestas);
@@ -50,7 +51,7 @@ export function QuickRepliesClient() {
     setGuardando(true);
     setError(null);
     const nueva = editando === "";
-    const res = await fetch(nueva ? "/api/quick-replies" : `/api/quick-replies/${editando}`, {
+    const res = await fetchEmpresa(nueva ? "/api/quick-replies" : `/api/quick-replies/${editando}`, {
       method: nueva ? "POST" : "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ atajo, texto }),
@@ -67,7 +68,7 @@ export function QuickRepliesClient() {
 
   async function borrar(r: RespuestaRapida) {
     if (!window.confirm(`¿Borrar la respuesta /${r.atajo}?`)) return;
-    const res = await fetch(`/api/quick-replies/${r.id}`, { method: "DELETE" }).catch(() => null);
+    const res = await fetchEmpresa(`/api/quick-replies/${r.id}`, { method: "DELETE" }).catch(() => null);
     if (res?.ok) void cargar();
   }
 

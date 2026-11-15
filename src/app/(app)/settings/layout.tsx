@@ -1,3 +1,4 @@
+import { multiempresaActiva } from "@/server/empresas/flag";
 import { SettingsNav } from "@/components/settings/settings-nav";
 import { agendaEnabled } from "@/server/agenda/flag";
 import { atribucionEnabled } from "@/server/attribution/flag";
@@ -20,6 +21,7 @@ export default function SettingsLayout({
       {/* En móvil las pestañas van arriba (en fila), no como columna lateral. */}
       <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
         <SettingsNav
+          piloto={multiempresaActiva()}
           agenda={agendaEnabled()}
           atribucion={atribucionEnabled()}
           instagram={isChannelEnabled("instagram")}

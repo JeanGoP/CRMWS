@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ImageUp, Trash2 } from "lucide-react";
@@ -39,7 +40,7 @@ export function FaviconCard({ branding }: { branding: Branding }) {
       return;
     }
     setSubiendo(true);
-    const res = await fetch("/api/settings/branding/favicon", {
+    const res = await fetchEmpresa("/api/settings/branding/favicon", {
       method: "PUT",
       headers: { "content-type": file.type || "application/octet-stream" },
       body: file,
@@ -61,7 +62,7 @@ export function FaviconCard({ branding }: { branding: Branding }) {
   async function quitar() {
     setError(null);
     setSubiendo(true);
-    const res = await fetch("/api/settings/branding/favicon", {
+    const res = await fetchEmpresa("/api/settings/branding/favicon", {
       method: "DELETE",
     }).catch(() => null);
     setSubiendo(false);

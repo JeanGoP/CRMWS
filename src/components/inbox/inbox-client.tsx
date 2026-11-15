@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ChevronLeft, PanelRight } from "lucide-react";
@@ -98,7 +99,7 @@ export function InboxClient({
   const sendQueue = useRef<Promise<unknown>>(Promise.resolve());
 
   const refetchConversations = useCallback(async () => {
-    const res = await fetch("/api/conversations").catch(() => null);
+    const res = await fetchEmpresa("/api/conversations").catch(() => null);
     if (!res?.ok) return;
     const data = (await res.json()) as { conversations: ConversationDto[] };
     setConversations(data.conversations);
@@ -106,7 +107,7 @@ export function InboxClient({
   }, []);
 
   const refetchMessages = useCallback(async (conversationId: string) => {
-    const res = await fetch(
+    const res = await fetchEmpresa(
       `/api/conversations/${conversationId}/messages`
     ).catch(() => null);
     if (!res?.ok) return;
@@ -115,7 +116,7 @@ export function InboxClient({
   }, []);
 
   const refetchNotas = useCallback(async (conversationId: string) => {
-    const res = await fetch(`/api/conversations/${conversationId}/notes`).catch(() => null);
+    const res = await fetchEmpresa(`/api/conversations/${conversationId}/notes`).catch(() => null);
     if (!res?.ok) return;
     const data = (await res.json()) as { notas: NotaDto[] };
     if (selectedIdRef.current === conversationId) setNotas(data.notas);
@@ -133,7 +134,7 @@ export function InboxClient({
       setReplyTo(null);
       void refetchMessages(id);
       void refetchNotas(id);
-      void fetch(`/api/conversations/${id}`, {
+      void fetchEmpresa(`/api/conversations/${id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ markRead: true }),
@@ -179,7 +180,7 @@ export function InboxClient({
         setMessages((prev) =>
           prev.some((x) => x.id === m.id) ? prev : [...prev, m]
         );
-        void fetch(`/api/conversations/${conversationId}`, {
+        void fetchEmpresa(`/api/conversations/${conversationId}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ markRead: true }),
@@ -300,7 +301,7 @@ export function InboxClient({
       const drop = () => setPending((prev) => prev.filter((p) => p.id !== tmpId));
 
       const run = async (): Promise<string | null> => {
-        const res = await fetch(`/api/conversations/${conversationId}/messages`, {
+        const res = await fetchEmpresa(`/api/conversations/${conversationId}/messages`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(
@@ -336,7 +337,7 @@ export function InboxClient({
   const patchConversation = useCallback(
     async (patch: { aiEnabled?: boolean; reactivate?: boolean }) => {
       if (!selectedIdRef.current) return;
-      await fetch(`/api/conversations/${selectedIdRef.current}`, {
+      await fetchEmpresa(`/api/conversations/${selectedIdRef.current}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(patch),
@@ -351,7 +352,7 @@ export function InboxClient({
     async (alsoContact: boolean): Promise<string | null> => {
       const id = selectedIdRef.current;
       if (!id) return "Sin conversación seleccionada";
-      const res = await fetch(
+      const res = await fetchEmpresa(
         `/api/conversations/${id}${alsoContact ? "?contacto=1" : ""}`,
         { method: "DELETE" }
       ).catch(() => null);
@@ -470,7 +471,7 @@ export function InboxClient({
               }}
               onNota={async (texto) => {
                 const id = selected.id;
-                const res = await fetch(`/api/conversations/${id}/notes`, {
+                const res = await fetchEmpresa(`/api/conversations/${id}/notes`, {
                   method: "POST",
                   headers: { "content-type": "application/json" },
                   body: JSON.stringify({ texto }),
@@ -491,7 +492,7 @@ export function InboxClient({
                 notas={notas}
                 onBorrarNota={async (n) => {
                   if (!window.confirm("¿Borrar esta nota interna?")) return;
-                  const res = await fetch(`/api/conversations/${n.conversationId}/notes/${n.id}`, {
+                  const res = await fetchEmpresa(`/api/conversations/${n.conversationId}/notes/${n.id}`, {
                     method: "DELETE",
                   }).catch(() => null);
                   if (res?.ok) setNotas((prev) => prev.filter((x) => x.id !== n.id));

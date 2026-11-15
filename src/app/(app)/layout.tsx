@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { multiempresaActiva } from "@/server/empresas/flag";
+import { empresasDeUsuario } from "@/server/empresas/servicio";
 import { cookies, headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getSessionOrNull } from "@/lib/auth/session";
@@ -17,6 +19,10 @@ export default async function AppLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await getSessionOrNull();
   if (!session) redirect("/login");
+  const piloto = multiempresaActiva();
+  const empresa = piloto
+    ? (await empresasDeUsuario(session.userId)).find(({ id }) => id === session.organizationId)
+    : undefined;
   const branding = await getBranding(session.organizationId);
   const authSession = await getAuth().api.getSession({
     headers: await headers(),
@@ -32,6 +38,7 @@ export default async function AppLayout({
   return (
     <AppShell
       branding={branding}
+      empresa={empresa}
       userName={authSession?.user.name ?? "Usuario"}
       role={session.role}
       theme={theme}

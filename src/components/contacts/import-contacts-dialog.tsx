@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useState } from "react";
 import {
   PROBLEM_LABELS,
@@ -51,7 +52,7 @@ export function ImportContactsDialog({
     if (!preview) return;
     setSaving(true);
     setError(null);
-    const res = await fetch("/api/contacts/import", {
+    const res = await fetchEmpresa("/api/contacts/import", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ contacts: preview.valid, aiPaused }),

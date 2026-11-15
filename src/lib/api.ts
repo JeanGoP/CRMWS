@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { CABECERA_EMPRESA } from "@/lib/empresas-contexto";
+import { multiempresaActiva } from "@/server/empresas/flag";
 import { requireSession, UnauthorizedError, type SessionContext } from "@/lib/auth/session";
 
 /** Respuesta de error estándar de la API interna (contrato api.md). */
@@ -26,6 +28,14 @@ export function withAuth<Args extends unknown[]>(
         return apiError(401, "unauthorized", "No autenticado");
       }
       throw err;
+    }
+    const request = args[0];
+    if (multiempresaActiva() && request instanceof Request) {
+      const empresaId = request.headers.get(CABECERA_EMPRESA);
+      const lee = request.method === "GET" || request.method === "HEAD";
+      if ((empresaId || !lee) && empresaId !== session.organizationId) {
+        return apiError(409, "empresa_cambio", "La empresa activa cambió. Recarga la página");
+      }
     }
     try {
       return await handler(session, ...args);

@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import type { StageDto } from "@/lib/types";
@@ -24,7 +25,7 @@ export function StageManager({
 
   async function rename(stage: StageDto, name: string) {
     if (!name.trim() || name === stage.name) return;
-    await fetch(`/api/pipeline/stages/${stage.id}`, {
+    await fetchEmpresa(`/api/pipeline/stages/${stage.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: name.trim() }),
@@ -38,12 +39,12 @@ export function StageManager({
     const swap = sorted[idx + dir];
     if (!swap) return;
     await Promise.all([
-      fetch(`/api/pipeline/stages/${stage.id}`, {
+      fetchEmpresa(`/api/pipeline/stages/${stage.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ position: swap.position }),
       }),
-      fetch(`/api/pipeline/stages/${swap.id}`, {
+      fetchEmpresa(`/api/pipeline/stages/${swap.id}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ position: stage.position }),
@@ -54,7 +55,7 @@ export function StageManager({
 
   async function add() {
     if (!newName.trim()) return;
-    await fetch("/api/pipeline/stages", {
+    await fetchEmpresa("/api/pipeline/stages", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: newName.trim() }),
@@ -68,7 +69,7 @@ export function StageManager({
     const url = moveToId
       ? `/api/pipeline/stages/${stage.id}?moveTo=${moveToId}`
       : `/api/pipeline/stages/${stage.id}`;
-    const res = await fetch(url, { method: "DELETE" }).catch(() => null);
+    const res = await fetchEmpresa(url, { method: "DELETE" }).catch(() => null);
     if (!res) return;
     if (res.status === 409) {
       const data = (await res.json().catch(() => null)) as {

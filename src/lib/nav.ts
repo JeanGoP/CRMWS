@@ -1,4 +1,5 @@
 import {
+  Building2,
   CalendarDays,
   ChartColumn,
   FlaskConical,
@@ -50,11 +51,13 @@ export const SETTINGS_ITEM: NavItem = {
 export function appNavGroups({
   agenda = false,
   role,
+  multiempresa = false,
 }: {
   /** 015 — "Citas" solo existe si esta instancia encendió la agenda. */
   agenda?: boolean;
   /** #86 — La guía de inicio solo para quien puede configurar. */
   role?: string | null;
+  multiempresa?: boolean;
 }): NavGroup[] {
   const trabajo: NavItem[] = [
     { href: "/inbox", label: "Bandeja", icon: Inbox, badge: true },
@@ -67,15 +70,15 @@ export function appNavGroups({
 
   const agente: NavItem[] = [];
   // Un miembro del equipo no puede hacer ninguno de los pasos de la guía.
-  if (canConfigure(role)) {
+  if (!multiempresa && canConfigure(role)) {
     agente.push({ href: "/onboarding", label: "Guía de inicio", icon: ListChecks });
   }
-  agente.push(
-    { href: "/agent", label: "Agente", icon: Sparkles },
-    { href: "/lab", label: "Laboratorio", icon: FlaskConical }
-  );
+  agente.push({ href: "/agent", label: "Agente", icon: Sparkles });
+  if (!multiempresa) agente.push({ href: "/lab", label: "Laboratorio", icon: FlaskConical });
 
+  const empresas = { items: [{ href: "/empresas", label: "Empresas", icon: Building2 }] };
   return [
+    ...(multiempresa ? [empresas] : []),
     { title: "Trabajo", items: trabajo },
     { title: "Agente", items: agente },
     // 019 — Se mide al final: primero se atiende y se organiza.

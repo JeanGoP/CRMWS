@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { cloneElement, useEffect, useId, useState, type ReactElement } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,7 +42,7 @@ function Field({ label, children, hint }: { label: string; children: ReactElemen
   return <div className="space-y-1.5"><Label htmlFor={id}>{label}</Label>{cloneElement(children, { id })}{hint && <p className="text-xs text-muted-foreground">{hint}</p>}</div>;
 }
 
-export function CarteraClient() {
+export function CarteraClient({ piloto = false }: { piloto?: boolean }) {
   const [state, setState] = useState<State | null>(null);
   const [token, setToken] = useState("");
   const [clearToken, setClearToken] = useState(false);
@@ -56,7 +57,7 @@ export function CarteraClient() {
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    void fetch("/api/settings/cartera").then(async (res) => {
+    void fetchEmpresa("/api/settings/cartera").then(async (res) => {
       if (!res.ok) throw new Error();
       setState(await res.json() as State);
     }).catch(() => setError("No se pudo cargar la configuración de cartera"));
@@ -79,7 +80,7 @@ export function CarteraClient() {
     if (!state) return;
     setBusy(true); setError(""); setNotice("");
     try {
-      const res = await fetch("/api/settings/cartera", {
+      const res = await fetchEmpresa("/api/settings/cartera", {
         method: "PUT", headers: { "content-type": "application/json" },
         body: JSON.stringify({ apiUrl: state.apiUrl, token: token || undefined, clearToken, config: state.config }),
       });
@@ -93,7 +94,7 @@ export function CarteraClient() {
   async function test() {
     setBusy(true); setError(""); setNotice(""); setTestResult(null);
     try {
-      const res = await fetch("/api/settings/cartera/test", {
+      const res = await fetchEmpresa("/api/settings/cartera/test", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ identification: testIdentification.trim(), cutDate: testDate }),
       });
@@ -111,7 +112,8 @@ export function CarteraClient() {
     <div><h1 className="text-2xl font-bold">Cartera</h1>
       <p className="mt-1 text-sm text-muted-foreground">Prepara cómo consultará Hilora los saldos y cómo deberá hablar de pagos tu agente.</p></div>
     <div className="rounded-md border border-warning-soft bg-warning-tint p-4 text-sm text-warning-text">
-      Esta versión guarda un borrador y permite probar la consulta. Los cobros automáticos y la consulta de deuda por Nea aún no están activados.
+      {piloto ? "Configura un borrador de Cartera con datos ficticios."
+        : "Esta versión guarda un borrador y permite probar la consulta. Los cobros automáticos y la consulta de deuda por Nea aún no están activados."}
     </div>
     <Card><CardHeader><CardTitle>1. Conexión de solo lectura</CardTitle><CardDescription>La credencial se guarda cifrada. No incluyas el token en la URL.</CardDescription></CardHeader>
       <CardContent className="grid gap-4 sm:grid-cols-2">
@@ -162,7 +164,7 @@ export function CarteraClient() {
       </CardContent></Card>
     <div className="flex flex-wrap items-center gap-3"><Button type="button" onClick={() => void save()} disabled={busy || !dirty}>Guardar borrador</Button>
       <span className="text-xs text-muted-foreground">{state.updatedAt ? `Último guardado: ${new Date(state.updatedAt).toLocaleString("es-CO")}` : "Sin guardar"}</span></div>
-    <Card><CardHeader><CardTitle>Probar consulta</CardTitle><CardDescription>Usa una identificación autorizada. Hilora solo muestra conteos y totales, sin nombres ni teléfonos.</CardDescription></CardHeader>
+    {!piloto && <Card><CardHeader><CardTitle>Probar consulta</CardTitle><CardDescription>Usa una identificación autorizada. Hilora solo muestra conteos y totales, sin nombres ni teléfonos.</CardDescription></CardHeader>
       <CardContent className="space-y-3"><div className="grid gap-3 sm:grid-cols-2">
         <Field label="Identificación de prueba"><Input inputMode="numeric" value={testIdentification} onChange={(e) => setTestIdentification(e.target.value)} /></Field>
         <Field label="Fecha de corte"><Input type="date" value={testDate} onChange={(e) => setTestDate(e.target.value)} /></Field></div>
@@ -172,7 +174,7 @@ export function CarteraClient() {
         {testResult && <div role="status" className="rounded-md bg-brand-tint p-3 text-sm text-brand-text">
           Consulta correcta: {testResult.records} filas, {testResult.customers} clientes, {testResult.invoices} facturas.
           Saldo pendiente: {testResult.openBalance.toLocaleString("es-CO")}; vencido: {testResult.overdueBalance.toLocaleString("es-CO")} en {testResult.overdueRecords} cuotas.
-        </div>}</CardContent></Card>
+        </div>}</CardContent></Card>}
     {notice && <p role="status" className="text-sm text-success-text">{notice}</p>}
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
   </div>;

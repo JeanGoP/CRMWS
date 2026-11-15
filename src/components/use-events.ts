@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { DOM_EMPRESA } from "@/lib/empresas-contexto";
 
 export type EventHandlers = {
   onMessageNew?: (data: { conversationId: string; message: unknown }) => void;
@@ -49,7 +50,8 @@ export function useEvents(handlers: EventHandlers): void {
   handlersRef.current = handlers;
 
   useEffect(() => {
-    const source = new EventSource("/api/events");
+    const empresa = document.getElementById(DOM_EMPRESA)?.dataset.empresaId;
+    const source = new EventSource(empresa ? `/api/events?empresa=${encodeURIComponent(empresa)}` : "/api/events");
     let hadError = false;
 
     const listen = <T,>(type: string, handler: (data: T) => void) => {

@@ -7,6 +7,7 @@ import { appIconHref, NAV_INK, shortAppName } from "@/lib/pwa";
 import { RegistrarServiceWorker } from "@/components/pwa";
 import { normalizeThemePreference, THEME_COOKIE } from "@/lib/theme";
 import { getBranding } from "@/server/branding";
+import { multiempresaActiva } from "@/server/empresas/flag";
 import { enabledChannels } from "@/server/channels/enabled";
 import { productName } from "@/lib/channels";
 import "./globals.css";
@@ -79,7 +80,7 @@ export default async function RootLayout({
       </head>
       <body className="font-sans">
         {children}
-        <RegistrarServiceWorker />
+        {!multiempresaActiva() && <RegistrarServiceWorker />}
       </body>
     </html>
   );

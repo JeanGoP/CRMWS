@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
+import { multiempresaActiva } from "@/server/empresas/flag";
 import { resolveMembership } from "@/server/auth/on-signup";
 
 export type SessionContext = {
@@ -25,7 +26,8 @@ export async function requireSession(): Promise<SessionContext> {
   if (!session) throw new UnauthorizedError();
   // La sesión puede crearse antes de que la membresía exista (registro
   // inicial) — la membresía en BD es la fuente de verdad de org + rol.
-  const membership = await resolveMembership(session.user.id);
+  const organizationId = multiempresaActiva() ? session.session.activeOrganizationId : null;
+  const membership = await resolveMembership(session.user.id, organizationId ?? undefined);
   if (!membership) {
     throw new UnauthorizedError("Sesión sin organización activa");
   }

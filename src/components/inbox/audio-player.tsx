@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
 import { Loader2, Pause, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -125,7 +126,7 @@ export function AudioPlayer({ src, className }: { src: string; className?: strin
     setEstado("cargando");
     cargando.current = (async () => {
       try {
-        const res = await fetch(src);
+        const res = await fetchEmpresa(src);
         if (!res.ok) throw new Error(String(res.status));
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);

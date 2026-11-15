@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Send } from "lucide-react";
@@ -37,7 +38,7 @@ export function StartConversation({
 
   useEffect(() => {
     void (async () => {
-      const res = await fetch("/api/templates").catch(() => null);
+      const res = await fetchEmpresa("/api/templates").catch(() => null);
       if (!res?.ok) return setTemplates([]);
       const data = (await res.json()) as { templates: TemplateDto[] };
       const aprobadas = data.templates.filter((t) => t.status === "approved");
@@ -52,7 +53,7 @@ export function StartConversation({
   async function enviar() {
     setEnviando(true);
     setError(null);
-    const res = await fetch(`/api/contacts/${contactId}/start-conversation`, {
+    const res = await fetchEmpresa(`/api/contacts/${contactId}/start-conversation`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

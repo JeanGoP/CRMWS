@@ -1,0 +1,71 @@
+name: Piloto multiempresa
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  aislamiento:
+    name: Aislamiento entre dos empresas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hilora_prueba
+          POSTGRES_PASSWORD: solo_ci_multiempresa
+          POSTGRES_DB: hilora_multiempresa
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U hilora_prueba -d hilora_multiempresa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_BASE_URL: http://127.0.0.1:3139
+      BETTER_AUTH_SECRET: secreto-solo-para-ensayo-e2e-multiempresa
+      ENCRYPTION_KEY: MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTIzNDU2Nzg5MDE=
+      META_WEBHOOK_VERIFY_TOKEN: prueba-multiempresa-webhook
+      BOT_API_KEY: llave-global-de-ensayo-e2e-multiempresa
+      MULTIEMPRESA_PILOTO: "on"
+      MULTIEMPRESA_ADMIN_EMAIL: operador@example.test
+      AGENDA: "on"
+      CARTERA: "on"
+      CHANNELS: whatsapp,telegram
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Migrar la base ficticia
+        env:
+          DATABASE_URL: postgresql://hilora_prueba:solo_ci_multiempresa@127.0.0.1:${{ job.services.postgres.ports[5432] }}/hilora_multiempresa
+          MIGRATIONS_DIR: ./drizzle
+        run: node scripts/migrate.mjs
+      - run: pnpm build
+        env:
+          DATABASE_URL: postgresql://hilora_prueba:solo_ci_multiempresa@127.0.0.1:${{ job.services.postgres.ports[5432] }}/hilora_multiempresa
+      - name: Probar el CRM en loopback
+        env:
+          DATABASE_URL: postgresql://hilora_prueba:solo_ci_multiempresa@127.0.0.1:${{ job.services.postgres.ports[5432] }}/hilora_multiempresa
+        run: |
+          node node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3139 > /tmp/hilora-e2e.log 2>&1 &
+          servidor=$!
+          trap 'kill "$servidor" 2>/dev/null || true' EXIT
+          if ! curl --silent --show-error --fail --retry 20 --retry-connrefused --retry-delay 2 "$APP_BASE_URL/api/health"; then
+            cat /tmp/hilora-e2e.log
+            exit 1
+          fi
+          if ! node scripts/e2e-multiempresa.mjs; then
+            cat /tmp/hilora-e2e.log
+            exit 1
+          fi

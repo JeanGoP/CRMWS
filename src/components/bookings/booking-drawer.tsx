@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CalendarClock, MessageSquareText, Sparkles, Video, X } from "lucide-react";
@@ -324,7 +325,7 @@ function Reschedule({
     const abort = new AbortController();
     let alive = true;
     void (async () => {
-      const res = await fetch("/api/calendar/availability", { signal: abort.signal }).catch(
+      const res = await fetchEmpresa("/api/calendar/availability", { signal: abort.signal }).catch(
         () => null
       );
       if (!alive) return;

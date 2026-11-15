@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useState } from "react";
 import type {
   AdsBlockDto,
@@ -31,7 +32,7 @@ async function cargar<T>(
   set((prev) => ({ ...prev, loading: true, error: null }));
   let res: Response;
   try {
-    res = await fetch(url, { signal });
+    res = await fetchEmpresa(url, { signal });
   } catch {
     if (signal.aborted) return;
     set(() => ({ data: null, loading: false, error: "No se pudo cargar. Revisa tu conexión." }));
