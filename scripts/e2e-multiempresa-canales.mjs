@@ -51,6 +51,7 @@ const cuenta = [
   { id: "e2e_canales_a", org: "org_e2e_canales_a", email: "canales-a@example.test" },
   { id: "e2e_canales_b", org: "org_e2e_canales_b", email: "canales-b@example.test" },
 ];
+const miembro = { id: "e2e_canales_miembro", org: cuenta[0].org, email: "canales-miembro@example.test" };
 const clave = "Credencial-No-Publicar-De-E2E-Canales!";
 const chat = 12025550111;
 const baseDePruebas = /^hilora_(e2e_)?canales$/;
@@ -186,7 +187,13 @@ async function sembrar(sql) {
         values (${`mem_${c.id}`}, ${c.org}, ${c.id}, 'owner')`;
       await tx`insert into pipeline_stage (id, organization_id, name, position, kind)
         values (${`stg_${c.id}`}, ${c.org}, 'Nuevo', 0, 'open')`;
+      await tx`insert into agent_profile (id, organization_id) values (${`agp_${c.id}`}, ${c.org})`;
     }
+    await tx`insert into "user" (id, name, email) values (${miembro.id}, ${miembro.id}, ${miembro.email})`;
+    await tx`insert into account (id, account_id, provider_id, user_id, password)
+      values (${`cred_${miembro.id}`}, ${miembro.id}, 'credential', ${miembro.id}, ${password})`;
+    await tx`insert into member (id, organization_id, user_id, role)
+      values (${`mem_${miembro.id}`}, ${miembro.org}, ${miembro.id}, 'member')`;
   });
 }
 
@@ -207,6 +214,42 @@ function cambioWa(i, texto, id = `wamid.e2e.${randomUUID()}`) {
   };
 }
 
+async function probarAgenteYGuia(base, a, b) {
+  const perfil = "/api/agent/profile";
+  const contenido = (html) => html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "");
+  const guiaA = contenido((await a("/onboarding")).text);
+  assert.match(guiaA, /Prepara el perfil del agente/);
+  assert.match(guiaA, /Configura tus canales/);
+  assert.match(guiaA, /Configura la agenda interna/);
+  assert.doesNotMatch(guiaA, /Listo · revisar/);
+  const agenteA = contenido((await a("/agent")).text);
+  assert.match(agenteA, /href="\/agent"/);
+  assert.match(agenteA, /href="\/onboarding"/);
+  assert.match(agenteA, /href="\/catalogo"/);
+
+  await a(perfil, { empresa: cuenta[1].org, status: 409 });
+  await a(perfil, { method: "PUT", body: { name: "Cruce denegado" }, empresa: cuenta[1].org, status: 409 });
+  await a(perfil, { method: "PUT", body: { enabled: true }, status: 409 });
+  await a(perfil, { method: "PUT", body: { name: "Agente de empresa A", instructions: "Perfil ficticio de la empresa A." } });
+  const [perfilA, perfilB, guiaActualizada, guiaB] = await Promise.all([
+    a(perfil), b(perfil), a("/onboarding"), b("/onboarding"),
+  ]);
+  assert.equal(perfilA.json.profile.name, "Agente de empresa A");
+  assert.equal(perfilA.json.profile.enabled, false);
+  assert.equal(perfilB.json.profile.name, "Asistente");
+  assert.match(contenido(guiaActualizada.text), /Listo · revisar/);
+  assert.doesNotMatch(contenido(guiaB.text), /Listo · revisar/);
+
+  const equipo = cliente(base, miembro.org);
+  await equipo("/api/auth/sign-in/email", { method: "POST", body: { email: miembro.email, password: clave } });
+  await equipo(perfil, { status: 403 });
+  await equipo(perfil, { method: "PUT", body: { name: "Cambio de miembro" }, status: 403 });
+  const catalogo = contenido((await equipo("/catalogo")).text);
+  assert.match(catalogo, /Catálogo/);
+  assert.doesNotMatch(catalogo, /href="\/(agent|onboarding)"/);
+  console.log("OK guía y perfil actualizados solo para la empresa activa; permisos del equipo comprobados");
+}
+
 async function probar(base, mock, sql) {
   const [a, b] = cuenta.map(({ org }) => cliente(base, org));
   const publico = cliente(base, null);
@@ -222,6 +265,7 @@ async function probar(base, mock, sql) {
     const prefs = await api("/api/settings/channel-preference");
     assert.deepEqual(prefs.json.preference, { whatsapp: false, telegram: false });
   }
+  await probarAgenteYGuia(base, a, b);
   await publico("/api/bot/profile", { status: 404 });
   await publico("/api/settings/ai", { status: 404 });
   await publico("/api/webhooks/ig/prohibido", { method: "POST", body: {}, status: 404 });

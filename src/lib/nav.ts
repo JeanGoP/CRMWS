@@ -70,21 +70,22 @@ export function appNavGroups({
   // Citas va después de Contactos: es el paso siguiente de un trato, no una
   // sección aparte.
   if (agenda) trabajo.push({ href: "/bookings", label: "Citas", icon: CalendarDays });
-  if (gestionManual) trabajo.push({ href: "/agent", label: "Catálogo", icon: BookOpen });
+  if (gestionManual) trabajo.push({ href: "/catalogo", label: "Catálogo", icon: BookOpen });
 
   const agente: NavItem[] = [];
+  const configura = canConfigure(role);
   // Un miembro del equipo no puede hacer ninguno de los pasos de la guía.
-  if (!multiempresa && canConfigure(role)) {
+  if (configura && (!multiempresa || gestionManual)) {
     agente.push({ href: "/onboarding", label: "Guía de inicio", icon: ListChecks });
   }
-  agente.push({ href: "/agent", label: "Agente", icon: Sparkles });
+  if (!gestionManual || configura) agente.push({ href: "/agent", label: "Agente", icon: Sparkles });
   if (!multiempresa) agente.push({ href: "/lab", label: "Laboratorio", icon: FlaskConical });
 
   const empresas = { items: [{ href: "/empresas", label: "Empresas", icon: Building2 }] };
   return [
     ...(multiempresa ? [empresas] : []),
     { title: "Trabajo", items: trabajo },
-    ...(gestionManual ? [] : [{ title: "Agente", items: agente }]),
+    ...(agente.length ? [{ title: "Agente", items: agente }] : []),
     // 019 — Se mide al final: primero se atiende y se organiza.
     { items: [{ href: "/results", label: "Resultados", icon: ChartColumn }] },
   ];

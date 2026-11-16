@@ -48,6 +48,20 @@ describe("barra lateral agrupada", () => {
     }
   });
 
+  it("en producción multiempresa separa Catálogo de Agente y Guía de inicio", () => {
+    const opciones = { agenda: true, multiempresa: true, gestionManual: true };
+    for (const role of ["owner", "admin"]) {
+      const groups = appNavGroups({ ...opciones, role });
+      expect(groups.find((group) => group.title === "Agente")?.items.map(({ href }) => href))
+        .toEqual(["/onboarding", "/agent"]);
+      expect(groups.find((group) => group.title === "Trabajo")?.items.at(-1))
+        .toMatchObject({ href: "/catalogo", label: "Catálogo" });
+    }
+    const miembro = appNavGroups({ ...opciones, role: "member" });
+    expect(miembro.some((group) => group.title === "Agente")).toBe(false);
+    expect(miembro.flatMap(({ items }) => items).some(({ href }) => href === "/catalogo")).toBe(true);
+  });
+
   it("solo la Bandeja lleva el contador y Ajustes queda fuera de los grupos", () => {
     const todos = appNavGroups({ agenda: true, role: "owner" }).flatMap((g) => g.items);
     expect(todos.filter((i) => i.badge).map((i) => i.href)).toEqual(["/inbox"]);

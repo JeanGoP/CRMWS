@@ -30,6 +30,15 @@ describe.each(["MULTIEMPRESA_PILOTO", "MULTIEMPRESA_PRODUCCION"])("Ajustes con %
     const response = middleware(new NextRequest(`${origin}/aviso-datos`));
     expect(response.status).toBe(404);
   });
+
+  it("la Guía de inicio está disponible en producción tras validar sesión y rol", () => {
+    const response = middleware(new NextRequest(`${origin}/onboarding`));
+    if (mode === "MULTIEMPRESA_PRODUCCION") {
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+    } else {
+      expect(response.headers.get("location")).toBe(`${origin}/empresas`);
+    }
+  });
 });
 
 describe("Canales en producción multiempresa", () => {
@@ -88,5 +97,19 @@ describe("Canales en producción multiempresa", () => {
       method: "POST",
       headers: { [CABECERA_EMPRESA]: "empresa-a" },
     })).headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("deja gestionar el perfil con su empresa y bloquea los endpoints operativos", () => {
+    const profile = `${origin}/api/agent/profile`;
+    const headers = { [CABECERA_EMPRESA]: "empresa-a" };
+    expect(middleware(new NextRequest(profile)).headers.get("x-middleware-next")).toBe("1");
+    expect(middleware(new NextRequest(profile, { method: "PUT" })).status).toBe(409);
+    expect(middleware(new NextRequest(profile, { method: "PUT", headers }))
+      .headers.get("x-middleware-next")).toBe("1");
+    expect(middleware(new NextRequest(`${profile}/preset`, { method: "POST", headers }))
+      .headers.get("x-middleware-next")).toBe("1");
+    expect(middleware(new NextRequest(`${profile}/preset`)).status).toBe(404);
+    expect(middleware(new NextRequest(`${origin}/api/agent/brain-status`)).status).toBe(404);
+    expect(middleware(new NextRequest(`${origin}/api/bot/profile`)).status).toBe(404);
   });
 });

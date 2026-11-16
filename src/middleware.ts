@@ -41,8 +41,13 @@ function esWebhookDeCanal(path: string, method: string): boolean {
     (/^\/api\/webhooks\/telegram\/[^/]+$/.test(path) && method === "POST");
 }
 
-function apiDisponible(path: string, lectura: boolean, produccion: boolean): boolean {
-  if (produccion && (path === "/api/auth/sign-up/email" || path.startsWith("/api/agent/"))) return false;
+function apiDisponible(path: string, method: string, lectura: boolean, produccion: boolean): boolean {
+  if (produccion) {
+    if (path === "/api/auth/sign-up/email") return false;
+    if (path === "/api/agent/profile") return lectura || method === "PUT";
+    if (path === "/api/agent/profile/preset") return method === "POST";
+    if (path === "/api/agent" || path.startsWith("/api/agent/")) return false;
+  }
   if (AUTH.has(path)) return true;
   if (LECTURAS.has(path)) return lectura;
   if (path === "/api/settings/cartera") return true;
@@ -66,6 +71,7 @@ export function middleware(req: NextRequest) {
         ? NextResponse.next()
         : NextResponse.redirect(new URL("/settings", req.url));
     }
+    if (path === "/onboarding" && produccion) return NextResponse.next();
     if (path === "/lab" || path === "/onboarding") {
       return NextResponse.redirect(new URL("/empresas", req.url));
     }
@@ -74,7 +80,7 @@ export function middleware(req: NextRequest) {
 
   if (canales && esWebhookDeCanal(path, req.method)) return NextResponse.next();
   const lectura = req.method === "GET" || req.method === "HEAD";
-  if (!apiDisponible(path, lectura, produccion) && !(canales && apiCanalesDisponible(path, req.method))) {
+  if (!apiDisponible(path, req.method, lectura, produccion) && !(canales && apiCanalesDisponible(path, req.method))) {
     return NextResponse.json({ error: {
       code: produccion ? "no_disponible" : "no_disponible_piloto",
       message: produccion ? "Esta función no está habilitada en esta instalación." : "Esta función está reservada para una fase posterior del piloto",
