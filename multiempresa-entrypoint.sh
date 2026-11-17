@@ -26,7 +26,7 @@ if ((!local && base.protocol !== "https:") || base.username || base.password ||
 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((process.env.MULTIEMPRESA_ADMIN_EMAIL ?? "").trim())) {
   throw new Error("Configura MULTIEMPRESA_ADMIN_EMAIL antes de arrancar.");
 }
-for (const key of ["HILORA_ADMIN_PASSWORD", "HILORA_LLAVE_CIFRADO", "BETTER_AUTH_SECRET"]) {
+for (const key of ["HILORA_LLAVE_CIFRADO", "BETTER_AUTH_SECRET"]) {
   if ((process.env[key] ?? "").length < 32) throw new Error("Falta un valor seguro para " + key);
 }
 process.stdout.write(base.origin);

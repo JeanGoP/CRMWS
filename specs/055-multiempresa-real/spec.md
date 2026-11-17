@@ -10,4 +10,6 @@ En producción, `MULTIEMPRESA_CANALES=on` ofrece WhatsApp Cloud API y Telegram p
 
 En Coolify usa `/docker-compose.real.yml` en un recurso separado, con HTTPS para `hilora`, `MULTIEMPRESA_ADMIN_EMAIL` y las cinco credenciales generadas disponibles solo durante la ejecución. Copia la contraseña inicial desde `SERVICE_PASSWORD_64_HILORAACCESO`. Mantén el despliegue manual. La restauración y cualquier migración de organizaciones existentes requieren un proceso distinto.
 
+Para recuperar el acceso del administrador, guarda una contraseña de 8 a 128 caracteres en `SERVICE_PASSWORD_64_HILORAACCESO` y aplica los cambios de Coolify. Desde la consola del contenedor `hilora`, ejecuta `node /app/seed-multiempresa.mjs --restablecer-clave`. El arranque usa esa variable solo al crear la primera cuenta. El comando actualiza la contraseña del administrador existente y vence sus sesiones activas.
+
 La aceptación exige comprobar una base vacía sin datos demo, el inicio de sesión, una cita creada desde Citas y el aislamiento entre dos empresas. En desarrollo se permite usar `HILORA_PRUEBA_LOCAL=on` solo con `http://127.0.0.1:3141` y la base dedicada del compose.
