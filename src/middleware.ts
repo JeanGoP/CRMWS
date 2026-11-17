@@ -5,6 +5,7 @@ import { multiempresaActiva, multiempresaCanales, multiempresaProduccion } from 
 
 const AUTH = new Set([
   "/api/auth/sign-in/email", "/api/auth/sign-up/email", "/api/auth/sign-out", "/api/auth/get-session",
+  "/api/auth/change-password",
 ]);
 
 const LOCALES = [
@@ -48,6 +49,7 @@ function apiDisponible(path: string, method: string, lectura: boolean, produccio
     if (path === "/api/agent/profile/preset") return method === "POST";
     if (path === "/api/agent" || path.startsWith("/api/agent/")) return false;
   }
+  if (path === "/api/auth/change-password") return method === "POST";
   if (AUTH.has(path)) return true;
   if (LECTURAS.has(path)) return lectura;
   if (path === "/api/settings/cartera") return true;

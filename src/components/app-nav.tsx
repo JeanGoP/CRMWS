@@ -212,16 +212,27 @@ export function AppNav({
       {/* Ajustes va abajo, solo: no es trabajo del día. */}
       {renderItem(SETTINGS_ITEM)}
 
-      <div className="mt-1 flex items-center gap-2.5 rounded-sm px-2.5 py-2 hover:bg-accent">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-bold text-brand-text">
-          {initials(userName)}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-semibold">{userName}</span>
-          <span className="block truncate text-[11px] text-text-3">
-            {role === "owner" ? "Propietario" : "Equipo"} · En línea
+      <div className="mt-1 flex items-center gap-1.5 rounded-sm px-1.5 py-1">
+        <Link
+          href="/cuenta"
+          aria-label="Mi cuenta"
+          aria-current={pathname === "/cuenta" ? "page" : undefined}
+          onClick={onClose}
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2 rounded-sm px-1 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            pathname === "/cuenta" ? "bg-brand-tint text-brand-text" : "hover:bg-accent"
+          )}
+        >
+          <span aria-hidden className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-bold text-brand-text">
+            {initials(userName)}
           </span>
-        </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13px] font-semibold">{userName}</span>
+            <span className="block truncate text-[11px] text-text-3">
+              Mi cuenta · {role === "owner" ? "Propietario" : role === "admin" ? "Administrador" : "Equipo"}
+            </span>
+          </span>
+        </Link>
         <span className="flex shrink-0 items-center">
           <button
             type="button"

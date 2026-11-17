@@ -39,6 +39,13 @@ describe.each(["MULTIEMPRESA_PILOTO", "MULTIEMPRESA_PRODUCCION"])("Ajustes con %
       expect(response.headers.get("location")).toBe(`${origin}/empresas`);
     }
   });
+
+  it("delega el cambio de contraseña a Better Auth sin exigir una empresa", () => {
+    const url = `${origin}/api/auth/change-password`;
+    expect(middleware(new NextRequest(url, { method: "POST" })).headers.get("x-middleware-next")).toBe("1");
+    expect(middleware(new NextRequest(url)).status).toBe(404);
+    expect(middleware(new NextRequest(`${origin}/api/auth/reset-password`, { method: "POST" })).status).toBe(404);
+  });
 });
 
 describe("Canales en producción multiempresa", () => {

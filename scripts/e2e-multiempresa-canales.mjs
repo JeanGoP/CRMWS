@@ -250,6 +250,60 @@ async function probarAgenteYGuia(base, a, b) {
   console.log("OK guía y perfil actualizados solo para la empresa activa; permisos del equipo comprobados");
 }
 
+async function probarCambioDeClave(base, sql, a, b) {
+  const [propietario, otraEmpresa] = cuenta;
+  const rutaCambio = "/api/auth/change-password";
+  const rutaLogin = "/api/auth/sign-in/email";
+  const claveNueva = "Credencial-Modificada-Solo-En-E2E-Canales!";
+  const otroDispositivo = cliente(base, propietario.org);
+  const anonimo = cliente(base, null);
+  const paginaVisible = (html) => html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, "");
+
+  // La membresía posterior hace que un login nuevo elija A, mientras la sesión
+  // que cambia su contraseña parte de B. Así se detecta perder la empresa activa.
+  await sql`insert into member (id, organization_id, user_id, role, created_at)
+    select 'mem_e2e_cuenta_empresa_secundaria_a', ${otraEmpresa.org}, user_id, 'member', created_at + interval '1 minute'
+    from member where user_id = ${propietario.id} and organization_id = ${propietario.org}`;
+  await otroDispositivo(rutaLogin, {
+    method: "POST", body: { email: propietario.email, password: clave }, headers: { "x-forwarded-for": "192.0.2.141" },
+  });
+  assert.equal((await otroDispositivo("/api/empresas")).json.empresaActivaId, propietario.org);
+  await a("/api/empresas/activa", { method: "POST", body: { empresaId: otraEmpresa.org }, status: 204 });
+  const empresaActiva = { empresa: otraEmpresa.org };
+  assert.equal((await a("/api/empresas", empresaActiva)).json.empresaActivaId, otraEmpresa.org);
+  assert.match(paginaVisible((await a("/cuenta", empresaActiva)).text), /Cambiar contraseña/i);
+  await anonimo("/cuenta", { status: 307 });
+
+  const cambio = { currentPassword: clave, newPassword: claveNueva, revokeOtherSessions: true };
+  await anonimo(rutaCambio, {
+    method: "POST", body: cambio, status: 401, headers: { "x-forwarded-for": "192.0.2.143" },
+  });
+  await a(rutaCambio, {
+    method: "POST", body: cambio, empresa: null, status: 403,
+    headers: { origin: "https://otro-sitio.example.test", "x-forwarded-for": "192.0.2.144" },
+  });
+  await a(rutaCambio, {
+    ...empresaActiva, method: "POST", body: { ...cambio, currentPassword: "Clave-actual-ficticia-incorrecta" }, status: 400,
+  });
+  assert.equal((await otroDispositivo("/api/empresas")).json.empresaActivaId, propietario.org);
+
+  await a(rutaCambio, { ...empresaActiva, method: "POST", body: cambio });
+  assert.equal((await a("/api/empresas", empresaActiva)).json.empresaActivaId, otraEmpresa.org);
+  await otroDispositivo("/api/empresas", { status: 401 });
+  assert.equal((await b("/api/empresas")).json.empresaActivaId, otraEmpresa.org);
+
+  const loginNuevo = cliente(base, propietario.org);
+  const ipLogin = { "x-forwarded-for": "192.0.2.142" };
+  await loginNuevo(rutaLogin, {
+    method: "POST", body: { email: propietario.email, password: clave }, headers: ipLogin, status: 401,
+  });
+  await loginNuevo(rutaLogin, {
+    method: "POST", body: { email: propietario.email, password: claveNueva }, headers: ipLogin,
+  });
+  assert.equal((await loginNuevo("/api/empresas")).json.empresaActivaId, propietario.org);
+  console.log("OK cambio privado de contraseña conserva la empresa activa y solo revoca las otras sesiones propias");
+}
+
 async function probar(base, mock, sql) {
   const [a, b] = cuenta.map(({ org }) => cliente(base, org));
   const publico = cliente(base, null);
@@ -402,6 +456,7 @@ async function probar(base, mock, sql) {
   await a(rutaHiloA, { method: "POST", body: { text: "canal desactivado" }, status: 409 });
   assert.equal(mock.salientes.length, 4);
   console.log("OK dos empresas aisladas en alta, webhooks, preferencias, bandeja y envíos simulados WA/Telegram");
+  await probarCambioDeClave(base, sql, a, b);
 }
 
 async function ejecutar() {
