@@ -7,6 +7,7 @@ import { appIconHref, NAV_INK, shortAppName } from "@/lib/pwa";
 import { RegistrarServiceWorker } from "@/components/pwa";
 import { normalizeThemePreference, THEME_COOKIE } from "@/lib/theme";
 import { getBranding } from "@/server/branding";
+import { multiempresaActiva, multiempresaProduccion } from "@/server/empresas/flag";
 import { enabledChannels } from "@/server/channels/enabled";
 import { productName } from "@/lib/channels";
 import "./globals.css";
@@ -36,10 +37,11 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await getBranding().catch(() => DEFAULT_BRANDING);
-  const producto = productName([...enabledChannels()]);
+  const gestionManual = multiempresaProduccion();
+  const producto = gestionManual ? "CRM multiempresa" : productName([...enabledChannels()]);
   return {
     title: `${branding.name} — ${producto}`,
-    description: `${producto} con agente de IA y Laboratorio de auto-evaluación`,
+    description: gestionManual ? "CRM multiempresa para gestión manual de reservas y citas" : `${producto} con agente de IA y Laboratorio de auto-evaluación`,
     // El `?v=` cambia con la marca: los navegadores guardan el favicon con una
     // insistencia notable y, sin eso, el logo nuevo tarda días en aparecer.
     icons: {
@@ -79,7 +81,7 @@ export default async function RootLayout({
       </head>
       <body className="font-sans">
         {children}
-        <RegistrarServiceWorker />
+        {!multiempresaActiva() && <RegistrarServiceWorker />}
       </body>
     </html>
   );

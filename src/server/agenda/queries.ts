@@ -1,4 +1,4 @@
-import { asc, desc, eq, gte, lt } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import type { DateRange } from "@/lib/time/calendar";
@@ -62,7 +62,13 @@ function baseQuery() {
       contactName: schema.contact.name,
     })
     .from(schema.booking)
-    .leftJoin(schema.contact, eq(schema.booking.contactId, schema.contact.id));
+    .leftJoin(
+      schema.contact,
+      and(
+        eq(schema.booking.contactId, schema.contact.id),
+        eq(schema.booking.organizationId, schema.contact.organizationId)
+      )
+    );
 }
 
 /** Las últimas 200 citas: el listado de siempre, para quien no pide rango. */

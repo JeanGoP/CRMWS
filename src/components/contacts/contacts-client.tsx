@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -29,7 +30,7 @@ import { ImportContactsDialog } from "./import-contacts-dialog";
 import { NewContactDialog } from "./new-contact-dialog";
 import { StartConversation } from "./start-conversation";
 
-export function ContactsClient() {
+export function ContactsClient({ permiteIniciarConversacion }: { permiteIniciarConversacion: boolean }) {
   const router = useRouter();
   const [contacts, setContacts] = useState<ContactDto[]>([]);
   const [query, setQuery] = useState("");
@@ -51,7 +52,7 @@ export function ContactsClient() {
 
   useEffect(() => {
     void (async () => {
-      const res = await fetch("/api/pipeline/stages").catch(() => null);
+      const res = await fetchEmpresa("/api/pipeline/stages").catch(() => null);
       if (!res?.ok) return;
       const data = (await res.json()) as { stages: { name: string }[] };
       setStages(data.stages.map((s) => s.name));
@@ -63,7 +64,7 @@ export function ContactsClient() {
     if (query.trim()) params.set("q", query.trim());
     if (stage !== "all") params.set("stage", stage);
     if (showArchived) params.set("archived", "true");
-    const res = await fetch(`/api/contacts?${params}`).catch(() => null);
+    const res = await fetchEmpresa(`/api/contacts?${params}`).catch(() => null);
     if (!res?.ok) return;
     const data = (await res.json()) as { contacts: ContactDto[] };
     // A quién llamar primero: alta arriba, sin prioridad al final. El orden lo
@@ -82,7 +83,7 @@ export function ContactsClient() {
   }, [refetch]);
 
   async function patch(id: string, body: Record<string, unknown>) {
-    await fetch(`/api/contacts/${id}`, {
+    await fetchEmpresa(`/api/contacts/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
@@ -222,15 +223,17 @@ export function ContactsClient() {
                   </Button>
                   {/* A quien nunca escribió hay que abrirle la conversación con
                       una plantilla: es regla de Meta, no del CRM. */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Escribir primero"
-                    title="Escribir primero (con plantilla)"
-                    onClick={() => setEscribiendo(c)}
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+                  {permiteIniciarConversacion && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Escribir primero"
+                      title="Escribir primero (con plantilla)"
+                      onClick={() => setEscribiendo(c)}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Link href={`/inbox?contact=${c.id}`}>
                     <Button variant="ghost" size="icon" aria-label="Abrir conversación">
                       <MessageSquareText className="h-4 w-4" />

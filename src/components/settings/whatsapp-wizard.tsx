@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { EntregasCard } from "./entregas-card";
 
 type Connection = {
@@ -22,6 +23,7 @@ type Connection = {
   verifiedName: string | null;
   status: "connected" | "reconnect_required";
   tokenLast4: string;
+  appId?: string | null;
 };
 
 type WebhookInfo = {
@@ -44,21 +46,22 @@ type WebhookRegistration =
  */
 type LastRegistration = { result: WebhookRegistration; from: "save" | "button" };
 
-export function WhatsappWizard() {
+export function WhatsappWizard({ multiempresa = false }: { multiempresa?: boolean }) {
   const [connection, setConnection] = useState<Connection | null>(null);
   const [webhook, setWebhook] = useState<WebhookInfo | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [avisoDesconexion, setAvisoDesconexion] = useState("");
   const [registration, setRegistration] = useState<LastRegistration | null>(
     null
   );
 
   const refetch = useCallback(async () => {
     const [c, w] = await Promise.all([
-      fetch("/api/settings/whatsapp").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/settings/webhook").then((r) => (r.ok ? r.json() : null)),
+      fetchEmpresa("/api/settings/whatsapp").then((r) => (r.ok ? r.json() : null)),
+      fetchEmpresa("/api/settings/webhook").then((r) => (r.ok ? r.json() : null)),
     ]).catch(() => [null, null]);
     if (c) setConnection(c.connection);
-    if (w) setWebhook(w);
+    if (w) setWebhook(w.url ? w : null);
     setLoaded(true);
   }, []);
 
@@ -70,8 +73,17 @@ export function WhatsappWizard() {
     return <p className="text-sm text-muted-foreground">Cargando…</p>;
   }
 
+  function alDesconectar(webhookRemoved?: boolean) {
+    setRegistration(null);
+    setAvisoDesconexion(webhookRemoved === false
+      ? "El número quedó desconectado en Hilora. Revisa en Meta si la dirección anterior todavía está configurada."
+      : "");
+    void refetch();
+  }
+
   return (
     <div className="max-w-3xl space-y-6">
+      {avisoDesconexion && <p role="status" className="text-sm text-warning-text">{avisoDesconexion}</p>}
       {connection?.status === "reconnect_required" && (
         <div className="flex flex-wrap items-start gap-2 rounded-lg border border-danger-soft bg-danger-tint p-4 text-sm">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
@@ -84,12 +96,7 @@ export function WhatsappWizard() {
               conexión para reconectar.
             </p>
           </div>
-          <Desconectar
-            onHecho={() => {
-              setRegistration(null);
-              void refetch();
-            }}
-          />
+          <Desconectar onHecho={alDesconectar} />
         </div>
       )}
 
@@ -106,28 +113,29 @@ export function WhatsappWizard() {
             </p>
           </div>
           <Badge variant="success">Conectado</Badge>
-          <Desconectar
-            onHecho={() => {
-              setRegistration(null);
-              void refetch();
-            }}
-          />
+          <Desconectar onHecho={alDesconectar} />
         </div>
       )}
 
       <ConnectForm
+        key={connection?.phoneNumberId ?? "sin-conexion"}
         existing={connection}
+        multiempresa={multiempresa}
         registration={registration?.from === "save" ? registration.result : null}
         onRegistration={(result) =>
           setRegistration(result ? { result, from: "save" } : null)
         }
-        onSaved={() => void refetch()}
+        onSaved={() => {
+          setAvisoDesconexion("");
+          void refetch();
+        }}
       />
 
       {webhook && (
         <WebhookCard
           webhook={webhook}
           connection={connection}
+          multiempresa={multiempresa}
           registration={registration?.from === "button" ? registration.result : null}
           onRegistration={(result) =>
             setRegistration(result ? { result, from: "button" } : null)
@@ -136,7 +144,7 @@ export function WhatsappWizard() {
       )}
 
       {/* 047 — Lo que llegó y no pudo entrar a la bandeja. */}
-      {connection && <EntregasCard />}
+      {connection && !multiempresa && <EntregasCard />}
     </div>
   );
 }
@@ -148,7 +156,7 @@ export function WhatsappWizard() {
  * instante — no es un ajuste, es apagar el canal. Lo que NO hace es borrar la
  * bandeja, y el aviso lo dice: sin eso, nadie se atreve a tocarlo.
  */
-function Desconectar({ onHecho }: { onHecho: () => void }) {
+function Desconectar({ onHecho }: { onHecho: (webhookRemoved?: boolean) => void }) {
   const [confirmando, setConfirmando] = useState(false);
   const [yendo, setYendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,10 +165,11 @@ function Desconectar({ onHecho }: { onHecho: () => void }) {
     setYendo(true);
     setError(null);
     try {
-      const res = await fetch("/api/settings/whatsapp", { method: "DELETE" });
+      const res = await fetchEmpresa("/api/settings/whatsapp", { method: "DELETE" });
       if (res.ok) {
+        const data = (await res.json().catch(() => null)) as { webhookRemoved?: boolean } | null;
         setConfirmando(false);
-        onHecho();
+        onHecho(data?.webhookRemoved);
       } else {
         const data = (await res.json().catch(() => null)) as {
           error?: { message?: string };
@@ -213,11 +222,13 @@ function Desconectar({ onHecho }: { onHecho: () => void }) {
 
 function ConnectForm({
   existing,
+  multiempresa,
   registration,
   onRegistration,
   onSaved,
 }: {
   existing: Connection | null;
+  multiempresa: boolean;
   registration: WebhookRegistration | null;
   onRegistration: (result: WebhookRegistration | null) => void;
   onSaved: () => void;
@@ -227,6 +238,8 @@ function ConnectForm({
     existing?.phoneNumberId ?? ""
   );
   const [token, setToken] = useState("");
+  const [appId, setAppId] = useState(existing?.appId ?? "");
+  const [appSecret, setAppSecret] = useState("");
   const [testResult, setTestResult] = useState<
     | { ok: true; display: string }
     | { ok: false; message: string }
@@ -236,15 +249,17 @@ function ConnectForm({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const canTest = wabaId.trim() && phoneNumberId.trim() && token.trim();
+  const canTest = wabaId.trim() && phoneNumberId.trim() && token.trim() &&
+    (!multiempresa || (appId.trim() && appSecret.trim()));
+  const datos = multiempresa ? { wabaId, phoneNumberId, token, appId, appSecret } : { wabaId, phoneNumberId, token };
 
   async function test() {
     setTesting(true);
     setTestResult(null);
-    const res = await fetch("/api/settings/whatsapp/test", {
+    const res = await fetchEmpresa("/api/settings/whatsapp/test", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ phoneNumberId, token }),
+      body: JSON.stringify(multiempresa ? datos : { phoneNumberId, token }),
     }).catch(() => null);
     setTesting(false);
     if (!res) {
@@ -269,10 +284,10 @@ function ConnectForm({
     setSaving(true);
     setSaveError(null);
     onRegistration(null);
-    const res = await fetch("/api/settings/whatsapp", {
+    const res = await fetchEmpresa("/api/settings/whatsapp", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ wabaId, phoneNumberId, token }),
+      body: JSON.stringify(datos),
     }).catch(() => null);
     setSaving(false);
     if (!res?.ok) {
@@ -287,6 +302,7 @@ function ConnectForm({
     } | null;
     onRegistration(saved?.webhook ?? null);
     setToken("");
+    setAppSecret("");
     setTestResult(null);
     onSaved();
   }
@@ -298,12 +314,18 @@ function ConnectForm({
           {existing ? "Reconectar / actualizar el número" : "Conectar tu número de WhatsApp"}
         </CardTitle>
         <CardDescription>
-          Pega las credenciales de WhatsApp Cloud API. El token se valida
-          contra Meta ANTES de guardarse y se almacena cifrado. Al guardar, el
-          webhook se registra en Meta por ti.
+          {multiempresa
+            ? "Hilora verifica con Meta que la app, la cuenta de WhatsApp Business y el número correspondan. Las credenciales se guardan cifradas."
+            : "Pega las credenciales de WhatsApp Cloud API. El token se valida contra Meta antes de guardarse y se almacena cifrado. Al guardar, el webhook se registra en Meta por ti."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {multiempresa ? (
+          <p className="rounded-md border bg-background p-4 text-sm text-muted-foreground">
+            Busca el App ID y el App Secret en Meta Developers → tu app → Configuración básica.
+            Usa un token de esa app con permisos de administración y mensajería de WhatsApp.
+          </p>
+        ) : (
         <div className="grid gap-3 rounded-md border bg-background p-4 text-sm">
           <p className="font-medium">¿De dónde sale el token?</p>
           <div className="grid gap-3 md:grid-cols-2">
@@ -330,6 +352,7 @@ function ConnectForm({
             </div>
           </div>
         </div>
+        )}
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
@@ -338,7 +361,10 @@ function ConnectForm({
               id="waba-id"
               placeholder="ID de la cuenta de WhatsApp Business"
               value={wabaId}
-              onChange={(e) => setWabaId(e.target.value)}
+              onChange={(e) => {
+                setWabaId(e.target.value);
+                setTestResult(null);
+              }}
             />
           </div>
           <div className="space-y-1.5">
@@ -347,15 +373,37 @@ function ConnectForm({
               id="phone-number-id"
               placeholder="ID del número de teléfono"
               value={phoneNumberId}
-              onChange={(e) => setPhoneNumberId(e.target.value)}
+              onChange={(e) => {
+                setPhoneNumberId(e.target.value);
+                setTestResult(null);
+              }}
             />
           </div>
         </div>
+        {multiempresa && (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="whatsapp-app-id">App ID de Meta</Label>
+              <Input id="whatsapp-app-id" value={appId} inputMode="numeric" onChange={(e) => {
+                setAppId(e.target.value);
+                setTestResult(null);
+              }} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="whatsapp-app-secret">App Secret de Meta</Label>
+              <Input id="whatsapp-app-secret" type="password" autoComplete="off" value={appSecret} onChange={(e) => {
+                setAppSecret(e.target.value);
+                setTestResult(null);
+              }} />
+            </div>
+          </div>
+        )}
         <div className="space-y-1.5">
           <Label htmlFor="token">Token de acceso</Label>
           <Input
             id="token"
             type="password"
+            autoComplete="off"
             placeholder={existing ? `Guardado (…${existing.tokenLast4}) — pega uno nuevo para cambiarlo` : "EAAG…"}
             value={token}
             onChange={(e) => {
@@ -376,19 +424,19 @@ function ConnectForm({
         )}
         {saveError && <p className="text-sm text-destructive">{saveError}</p>}
         {registration && (
-          <RegistrationNotice registration={registration} afterSave />
+          <RegistrationNotice registration={registration} afterSave multiempresa={multiempresa} />
         )}
 
         <div className="flex gap-2">
           <Button
             variant="outline"
-            disabled={!canTest || testing}
+            disabled={!canTest || testing || saving}
             onClick={() => void test()}
           >
             {testing ? "Probando…" : "Probar conexión"}
           </Button>
           <Button
-            disabled={!testResult?.ok || saving}
+            disabled={!testResult?.ok || saving || testing}
             onClick={() => void save()}
           >
             {saving ? "Guardando…" : "Guardar conexión"}
@@ -408,9 +456,11 @@ function ConnectForm({
 function RegistrationNotice({
   registration,
   afterSave = false,
+  multiempresa = false,
 }: {
   registration: WebhookRegistration;
   afterSave?: boolean;
+  multiempresa?: boolean;
 }) {
   if (registration.ok && "skipped" in registration) {
     return (
@@ -450,7 +500,7 @@ function RegistrationNotice({
           <>
             {afterSave ? "La conexión se guardó, pero no" : "No"} pudimos
             registrar el webhook en Meta. {registration.message} Reintenta con
-            «Registrar en Meta» o pega la URL y el verify token a mano.
+            «Registrar en Meta»{multiempresa ? "." : " o pega la URL y el verify token a mano."}
           </>
         )}
       </span>
@@ -461,11 +511,13 @@ function RegistrationNotice({
 function WebhookCard({
   webhook,
   connection,
+  multiempresa,
   registration,
   onRegistration,
 }: {
   webhook: WebhookInfo;
   connection: Connection | null;
+  multiempresa: boolean;
   registration: WebhookRegistration | null;
   onRegistration: (result: WebhookRegistration | null) => void;
 }) {
@@ -483,7 +535,7 @@ function WebhookCard({
     }
     setRegistering(true);
     onRegistration(null);
-    const res = await fetch("/api/settings/webhook", {
+    const res = await fetchEmpresa("/api/settings/webhook", {
       method: "POST",
       ...(recuperar
         ? { headers: { "content-type": "application/json" }, body: JSON.stringify({ recuperar: true }) }
@@ -515,10 +567,9 @@ function WebhookCard({
       <CardHeader>
         <CardTitle>Webhook de WhatsApp</CardTitle>
         <CardDescription>
-          Al guardar la conexión, esta dirección se registra en Meta por ti, en
-          el número (override). Estos valores son para el backend de tu agencia
-          o para pegarlos a mano en el panel de Meta solo si el registro
-          automático falla.
+          {multiempresa
+            ? "En Meta, verifica la dirección del webhook de tu app y suscribe la app a la cuenta de WhatsApp Business. Esta dirección y el verify token son de esta empresa."
+            : "Al guardar la conexión, esta dirección se registra en Meta por ti en el número. Puedes usar estos valores para configurarla a mano."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -532,10 +583,10 @@ function WebhookCard({
             >
               {registering ? "Registrando…" : "Registrar en Meta"}
             </Button>
-            {registration && <RegistrationNotice registration={registration} />}
+            {registration && <RegistrationNotice registration={registration} multiempresa={multiempresa} />}
             {/* 035 — Quien venía con Nea 1.x delante del CRM: el webhook vive en
                 un override ajeno de la WABA y el registro normal lo respeta. */}
-            {registration?.ok && "skipped" in registration && (
+            {!multiempresa && registration?.ok && "skipped" in registration && (
               <Button
                 variant="outline"
                 size="sm"
@@ -598,9 +649,9 @@ function WebhookCard({
         </div>
         {webhook.signatureLayer ? (
           <p className="flex items-center gap-2 text-xs text-success">
-            <ShieldCheck className="h-4 w-4" /> Verificación de firma activa
-            (META_APP_SECRET configurado): cada evento se valida con
-            x-hub-signature-256.
+            <ShieldCheck className="h-4 w-4" />
+            {multiempresa ? "Hilora verifica la firma de cada evento con el App Secret de esta conexión."
+              : "Verificación de firma activa: cada evento se valida con x-hub-signature-256."}
           </p>
         ) : (
           <p className="flex items-start gap-2 text-xs text-muted-foreground">

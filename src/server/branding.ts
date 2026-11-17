@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { multiempresaActiva, multiempresaProduccion } from "@/server/empresas/flag";
 import { getDb, schema } from "@/lib/db";
 import {
   DEFAULT_BRANDING,
@@ -30,6 +31,9 @@ function parseMetadata(metadata: string | null): Record<string, unknown> {
 export async function getBrandingContext(
   organizationId?: string | null
 ): Promise<{ organizationId: string | null; branding: Branding }> {
+  if (!organizationId && multiempresaActiva()) {
+    return { organizationId: null, branding: { ...DEFAULT_BRANDING, name: "Hilora" } };
+  }
   const db = getDb();
   const rows = organizationId
     ? await db
@@ -44,10 +48,12 @@ export async function getBrandingContext(
         .limit(1);
   if (!rows[0]) return { organizationId: null, branding: DEFAULT_BRANDING };
   const meta = parseMetadata(rows[0].metadata);
+  const base = multiempresaProduccion() ? { name: "Hilora", currency: "COP" as const } : undefined;
   return {
     organizationId: rows[0].id,
     branding: normalizeBranding(
-      (meta.branding as Partial<Branding> | undefined) ?? null
+      base ? { ...base, ...(meta.branding as Partial<Branding> | undefined) }
+        : (meta.branding as Partial<Branding> | undefined) ?? null
     ),
   };
 }

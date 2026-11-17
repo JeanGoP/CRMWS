@@ -18,6 +18,9 @@ import {
 import { callGraphSend, SendError } from "@/server/inbox/send";
 import { serializeMessage } from "@/server/inbox/ingest";
 import type { WebhookValue } from "@/server/inbox/webhook";
+import type { VinculoWhatsapp } from "./webhook-multiempresa";
+import { isChannelActiveForOrg } from "@/server/channels/preference";
+import { multiempresaCanales } from "@/server/empresas/flag";
 
 /** Errores tipados del servicio de plantillas → HTTP en la capa de API. */
 export class TemplateError extends Error {
@@ -251,11 +254,13 @@ export async function syncTemplates(organizationId: string): Promise<number> {
 /** Evento webhook `message_template_status_update` (modo directo, FR-050). */
 export async function applyTemplateStatusEvent(
   wabaId: string | null,
-  value: WebhookValue
+  value: WebhookValue,
+  vinculo?: VinculoWhatsapp
 ): Promise<void> {
   if (!wabaId) return;
-  const creds = await getCredentialsByWabaId(wabaId);
+  const creds = vinculo ? await getCredentialsByOrg(vinculo.organizationId) : await getCredentialsByWabaId(wabaId);
   if (!creds) return;
+  if (vinculo && (creds.id !== vinculo.id || creds.wabaId !== wabaId)) return;
 
   const status = mapMetaStatus(value.event);
   const name = value.message_template_name;
@@ -286,6 +291,9 @@ export async function sendTemplate(input: {
   templateId: string;
   variables?: string[];
 }): Promise<{ messageId: string }> {
+  if (multiempresaCanales() && !(await isChannelActiveForOrg("whatsapp", input.organizationId))) {
+    throw new TemplateError("not_connected", "Activa WhatsApp para esta empresa en Ajustes → Canales");
+  }
   const db = getDb();
 
   const templates = await db
@@ -326,7 +334,10 @@ export async function sendTemplate(input: {
     .from(schema.conversation)
     .innerJoin(
       schema.contact,
-      eq(schema.conversation.contactId, schema.contact.id)
+      and(
+        eq(schema.conversation.contactId, schema.contact.id),
+        eq(schema.conversation.organizationId, schema.contact.organizationId)
+      )
     )
     .where(
       scoped(
@@ -338,6 +349,9 @@ export async function sendTemplate(input: {
     .limit(1);
   const row = rows[0];
   if (!row) throw new TemplateError("not_found", "Conversación no encontrada");
+  if (row.conversation.channel !== "whatsapp") {
+    throw new TemplateError("invalid", "Las plantillas se envían en conversaciones de WhatsApp");
+  }
   if (row.conversation.isTest) {
     // Aserción dura del sandbox (FR-031)
     throw new SendError(

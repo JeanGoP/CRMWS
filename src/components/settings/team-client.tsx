@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { UserPlus } from "lucide-react";
 import { ContactAvatar } from "@/components/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 
 type Member = {
   id: string;
@@ -17,7 +18,7 @@ type Member = {
   createdAt: string;
 };
 
-export function TeamClient() {
+export function TeamClient({ puedeAgregarCuenta = false }: { puedeAgregarCuenta?: boolean }) {
   const [members, setMembers] = useState<Member[]>([]);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -25,9 +26,13 @@ export function TeamClient() {
   const [created, setCreated] = useState<{ email: string; password: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [correoExistente, setCorreoExistente] = useState("");
+  const [agregando, setAgregando] = useState(false);
+  const [errorAlAgregar, setErrorAlAgregar] = useState("");
+  const [avisoAlAgregar, setAvisoAlAgregar] = useState("");
 
   const refetch = useCallback(async () => {
-    const res = await fetch("/api/settings/team").catch(() => null);
+    const res = await fetchEmpresa("/api/settings/team").catch(() => null);
     if (!res?.ok) return;
     const data = (await res.json()) as { members: Member[] };
     setMembers(data.members);
@@ -51,7 +56,7 @@ export function TeamClient() {
     setSaving(true);
     setError(null);
     setCreated(null);
-    const res = await fetch("/api/settings/team", {
+    const res = await fetchEmpresa("/api/settings/team", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name, email, password: tempPassword }),
@@ -68,6 +73,30 @@ export function TeamClient() {
     setName("");
     setEmail("");
     setTempPassword("");
+    void refetch();
+  }
+
+  async function agregarCuenta(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!correoExistente.trim() || agregando || saving) return;
+    setAgregando(true);
+    setErrorAlAgregar("");
+    setAvisoAlAgregar("");
+    const res = await fetchEmpresa("/api/empresas/equipo", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: correoExistente.trim() }),
+    }).catch(() => null);
+    setAgregando(false);
+    if (!res?.ok) {
+      const body = (await res?.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      setErrorAlAgregar(body?.error?.message ?? "No se pudo agregar la cuenta.");
+      return;
+    }
+    setCorreoExistente("");
+    setAvisoAlAgregar("La cuenta ya puede acceder a esta empresa.");
     void refetch();
   }
 
@@ -129,7 +158,7 @@ export function TeamClient() {
           )}
           <Button
             disabled={
-              saving || !name.trim() || !email.trim() || tempPassword.length < 8
+              saving || agregando || !name.trim() || !email.trim() || tempPassword.length < 8
             }
             onClick={() => void create()}
           >
@@ -138,6 +167,39 @@ export function TeamClient() {
           </Button>
         </CardContent>
       </Card>
+
+      {puedeAgregarCuenta && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Agregar cuenta existente</CardTitle>
+            <CardDescription>
+              La persona podrá entrar en esta empresa con su cuenta de Hilora.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="space-y-3" onSubmit={agregarCuenta}>
+              <div className="space-y-1.5">
+                <Label htmlFor="team-existing-email">Correo de la cuenta existente</Label>
+                <Input
+                  id="team-existing-email"
+                  type="email"
+                  autoComplete="off"
+                  required
+                  value={correoExistente}
+                  onChange={(event) => setCorreoExistente(event.target.value)}
+                  disabled={agregando || saving}
+                />
+              </div>
+              {errorAlAgregar && <p role="alert" className="text-sm text-destructive">{errorAlAgregar}</p>}
+              {avisoAlAgregar && <p role="status" className="text-sm text-success-text">{avisoAlAgregar}</p>}
+              <Button type="submit" variant="outline" disabled={agregando || saving || !correoExistente.trim()}>
+                <UserPlus className="h-4 w-4" aria-hidden />
+                {agregando ? "Agregando…" : "Agregar al equipo"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">

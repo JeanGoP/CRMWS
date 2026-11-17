@@ -1,3 +1,4 @@
+import { multiempresaProduccion } from "@/server/empresas/flag";
 import { isVoceroName } from "@/lib/brand";
 import { DEFAULT_BRANDING } from "@/lib/branding";
 import { getBranding } from "@/server/branding";
@@ -42,7 +43,7 @@ export default async function AuthLayout({
             <div>
               <h1 className="sr-only">{branding.name}</h1>
               <p className="text-sm text-text-3">
-                {productName([...enabledChannels()])} con agente de IA
+                {multiempresaProduccion() ? "CRM multiempresa con agenda" : `${productName([...enabledChannels()])} con agente de IA`}
               </p>
             </div>
           )}

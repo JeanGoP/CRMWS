@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -49,16 +50,19 @@ export function navItemClass(active: boolean) {
 
 export function AppNav({
   branding,
+  empresa,
   userName,
   role,
   theme,
   commit,
   agenda = false,
+  gestionManual = false,
   kicker = "CRM · WhatsApp",
   open = false,
   onClose,
 }: {
   branding: Branding;
+  empresa?: string;
   userName: string;
   role: string;
   theme: ThemePreference;
@@ -76,6 +80,7 @@ export function AppNav({
    * todavía debe ver la entrada igual.
    */
   agenda?: boolean;
+  gestionManual?: boolean;
   /** Solo aplica por debajo de `lg`: en escritorio el lateral es fijo. */
   open?: boolean;
   onClose?: () => void;
@@ -88,7 +93,7 @@ export function AppNav({
   const [sonido, setSonido] = useState(true);
 
   async function refetchUnread() {
-    const res = await fetch("/api/conversations").catch(() => null);
+    const res = await fetchEmpresa("/api/conversations").catch(() => null);
     if (!res?.ok) return;
     const data = (await res.json()) as {
       conversations: { unreadCount: number }[];
@@ -117,7 +122,7 @@ export function AppNav({
   const version = commit ?? { commit: BUILD_COMMIT, verified: BUILD_COMMIT !== "" };
   // #87 — Qué hay en el menú y en qué grupo lo decide `appNavGroups`; aquí
   // solo se pinta.
-  const groups = appNavGroups({ agenda, role });
+  const groups = appNavGroups({ agenda, role, multiempresa: Boolean(empresa), gestionManual });
 
   function renderItem(item: NavItem) {
     const active = isNavActive(pathname, item.href);
@@ -133,7 +138,12 @@ export function AppNav({
           strokeWidth={1.8}
           aria-hidden
         />
-        <span className="flex-1">{item.label}</span>
+        <span className="min-w-0 flex-1">
+          {item.label}
+          {item.href === "/empresas" && empresa && (
+            <span className="block truncate text-xs font-normal text-text-3">{empresa}</span>
+          )}
+        </span>
         {item.badge && unread > 0 && (
           <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand px-1.5 text-[10.5px] font-bold text-brand-fg">
             {unread}
@@ -202,16 +212,27 @@ export function AppNav({
       {/* Ajustes va abajo, solo: no es trabajo del día. */}
       {renderItem(SETTINGS_ITEM)}
 
-      <div className="mt-1 flex items-center gap-2.5 rounded-sm px-2.5 py-2 hover:bg-accent">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-bold text-brand-text">
-          {initials(userName)}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px] font-semibold">{userName}</span>
-          <span className="block truncate text-[11px] text-text-3">
-            {role === "owner" ? "Propietario" : "Equipo"} · En línea
+      <div className="mt-1 flex items-center gap-1.5 rounded-sm px-1.5 py-1">
+        <Link
+          href="/cuenta"
+          aria-label="Mi cuenta"
+          aria-current={pathname === "/cuenta" ? "page" : undefined}
+          onClick={onClose}
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2 rounded-sm px-1 py-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            pathname === "/cuenta" ? "bg-brand-tint text-brand-text" : "hover:bg-accent"
+          )}
+        >
+          <span aria-hidden className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-bold text-brand-text">
+            {initials(userName)}
           </span>
-        </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[13px] font-semibold">{userName}</span>
+            <span className="block truncate text-[11px] text-text-3">
+              Mi cuenta · {role === "owner" ? "Propietario" : role === "admin" ? "Administrador" : "Equipo"}
+            </span>
+          </span>
+        </Link>
         <span className="flex shrink-0 items-center">
           <button
             type="button"

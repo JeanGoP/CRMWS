@@ -1,4 +1,5 @@
 import { count } from "drizzle-orm";
+import { multiempresaActiva, multiempresaProduccion } from "@/server/empresas/flag";
 import { getDb, schema } from "@/lib/db";
 
 /**
@@ -7,7 +8,8 @@ import { getDb, schema } from "@/lib/db";
  * propietario (bypass interno del gate).
  */
 export async function isPublicSignupAllowed(): Promise<boolean> {
-  if (process.env.ALLOW_SIGNUP === "true") return true;
+  if (multiempresaProduccion()) return false;
+  if (!multiempresaActiva() && process.env.ALLOW_SIGNUP === "true") return true;
   const db = getDb();
   const rows = await db.select({ n: count() }).from(schema.organization);
   return (rows[0]?.n ?? 0) === 0;

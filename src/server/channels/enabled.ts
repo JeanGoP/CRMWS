@@ -1,5 +1,6 @@
 import { getEnv } from "@/lib/env";
 import { isChannel, type Channel } from "@/lib/channels";
+import { multiempresaActiva, multiempresaCanales } from "@/server/empresas/flag";
 
 /**
  * 014 — Qué canales están encendidos en esta instancia.
@@ -34,7 +35,14 @@ export function parseChannels(raw: string | undefined): Set<Channel> {
 }
 
 export function enabledChannels(): Set<Channel> {
-  return parseChannels(getEnv().CHANNELS);
+  return channelsForEnvironment(getEnv());
+}
+
+export function channelsForEnvironment(env: { CHANNELS?: string; [variable: string]: unknown }): Set<Channel> {
+  const channels = parseChannels(env.CHANNELS);
+  if (!multiempresaActiva(env)) return channels;
+  if (!multiempresaCanales(env)) return new Set();
+  return new Set([...channels].filter((channel) => channel === "whatsapp" || channel === "telegram"));
 }
 
 export function isChannelEnabled(channel: Channel): boolean {

@@ -35,6 +35,10 @@ export const envSchema = z.object({
   AGENDA: z.string().optional(),
   // 053: conector de cartera del negocio, apagado por defecto.
   CARTERA: z.string().optional(),
+  MULTIEMPRESA_PILOTO: z.string().optional(),
+  MULTIEMPRESA_PRODUCCION: z.string().optional(),
+  MULTIEMPRESA_CANALES: z.string().optional(),
+  MULTIEMPRESA_ADMIN_EMAIL: z.string().optional(),
   // 016: atribucion de anuncios y reporte a la Conversions API de Meta.
   // Apagada por defecto: sin ella no se captura de que anuncio vino una
   // conversacion, no se le reporta nada a Meta y la superficie da 404.

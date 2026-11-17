@@ -2,6 +2,7 @@ import { getDb, schema } from "@/lib/db";
 import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { eq } from "drizzle-orm";
+import { multiempresaProduccion } from "@/server/empresas/flag";
 import { countVariables } from "@/lib/templates";
 import { channelPreferenceFor } from "@/server/channels/preference";
 import {
@@ -85,7 +86,9 @@ export async function getSettings(
 
   const row = rows[0];
   // Sin fila: la instancia recién encendida ya es usable.
-  if (!row) return DEFAULT_CALENDAR_SETTINGS;
+  if (!row) return multiempresaProduccion()
+    ? { ...DEFAULT_CALENDAR_SETTINGS, timezone: "America/Bogota" }
+    : DEFAULT_CALENDAR_SETTINGS;
 
   return {
     weeklyHours: normalizeWeeklyHours(row.weeklyHours as WeeklyHours),

@@ -5,7 +5,9 @@ import { canConfigure } from "@/lib/auth/roles";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { guideStatus } from "@/server/onboarding/guide";
+import { guideMultiempresa } from "@/server/onboarding/guide-multiempresa";
 import { launchChecklist } from "@/server/onboarding/launch-checklist";
+import { multiempresaActiva, multiempresaProduccion } from "@/server/empresas/flag";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,12 @@ export default async function OnboardingPage() {
   const session = await getSessionOrNull();
   if (!session) redirect("/login");
   if (!canConfigure(session.role)) redirect("/inbox");
+  if (multiempresaProduccion()) {
+    const guide = await guideMultiempresa(session.organizationId);
+    return <OnboardingClient guide={guide} checks={[]} agentName={null} manual />;
+  }
+  if (multiempresaActiva()) redirect("/empresas");
+
   const [guide, checks, [profile]] = await Promise.all([
     guideStatus(session.organizationId),
     launchChecklist(session.organizationId),

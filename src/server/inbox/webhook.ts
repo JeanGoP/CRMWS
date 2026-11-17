@@ -25,15 +25,14 @@ export function isValidWebhookToken(
  * Devuelve true si no hay secreto configurado (capa desactivada).
  */
 export function isValidSignature(
-  rawBody: string,
+  rawBody: string | Buffer,
   signatureHeader: string | null,
   appSecret: string | undefined
 ): boolean {
   if (!appSecret) return true;
   if (!signatureHeader?.startsWith("sha256=")) return false;
-  const expected = createHmac("sha256", appSecret)
-    .update(rawBody, "utf8")
-    .digest("hex");
+  const hmac = createHmac("sha256", appSecret);
+  const expected = (typeof rawBody === "string" ? hmac.update(rawBody, "utf8") : hmac.update(rawBody)).digest("hex");
   return safeEqual(signatureHeader.slice("sha256=".length), expected);
 }
 

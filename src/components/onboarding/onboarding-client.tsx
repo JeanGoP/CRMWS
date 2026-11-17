@@ -23,22 +23,24 @@ export function OnboardingClient({
   guide,
   checks,
   agentName,
+  manual = false,
 }: {
   guide: Guide;
   checks: LaunchCheck[];
   agentName: string | null;
+  manual?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const total = guide.steps.length;
-  const done = guide.steps.filter((s) => s.done).length;
+  const counted = manual ? guide.steps.filter((s) => !s.optional) : guide.steps;
+  const total = counted.length;
+  const done = counted.filter((s) => s.done).length;
   // Los obligatorios primero: el opcional solo es «el que toca» cuando ya no
   // falta nada más.
   const current =
     guide.steps.find((s) => !s.done && !s.optional)?.key ??
-    guide.steps.find((s) => !s.done)?.key ??
-    null;
+    (manual ? null : guide.steps.find((s) => !s.done)?.key ?? null);
   const guiaDelPar = guide.steps.find((s) => s.key === "brain")?.href ?? null;
   // Antes del paso 1 el nombre es el de fábrica («Asistente») y se lee como
   // una palabra suelta, no como el nombre de alguien: se dice «tu agente».
@@ -70,18 +72,27 @@ export function OnboardingClient({
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-8">
-        <header>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Guía de inicio
-          </p>
-          <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
-            Deja listo tu CRM en {total} pasos
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Hazlos en orden: cada botón te lleva a la pantalla que toca. Al
-            volver aquí verás tu avance.
-          </p>
-        </header>
+        {manual ? (
+          <header>
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Guía de inicio</h1>
+            <p className="mt-2 text-muted-foreground">
+              Prepara esta empresa para que tu equipo pueda atender desde Hilora.
+            </p>
+          </header>
+        ) : (
+          <header>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Guía de inicio
+            </p>
+            <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">
+              Deja listo tu CRM en {total} pasos
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              Hazlos en orden: cada botón te lleva a la pantalla que toca. Al
+              volver aquí verás tu avance.
+            </p>
+          </header>
+        )}
 
         <div aria-label="Avance">
           <div className="flex items-center justify-between text-sm">
@@ -151,7 +162,7 @@ export function OnboardingClient({
           })}
         </ol>
 
-        {checks.length > 0 && <section className="rounded-xl border bg-card p-5">
+        {!manual && checks.length > 0 && <section className="rounded-xl border bg-card p-5">
           <h2 className="text-lg font-semibold">Preparación de tu negocio</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Revisa estos detalles antes de atender nuevos clientes. No bloquean la Bandeja.
@@ -177,7 +188,20 @@ export function OnboardingClient({
               : "bg-card"
           )}
         >
-          {guide.enabled && guide.brainConnected ? (
+          {manual ? (
+            <>
+              <h2 className="flex items-center gap-2 font-semibold">
+                <Inbox className="h-4 w-4 text-muted-foreground" aria-hidden />
+                Atiende desde la Bandeja
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Abre la Bandeja para revisar y atender las conversaciones de esta empresa.
+              </p>
+              <Link href="/inbox" className={cn(buttonVariants({ size: "sm" }), "mt-3")}>
+                Ir a la Bandeja <ArrowRight className="h-4 w-4" aria-hidden />
+              </Link>
+            </>
+          ) : guide.enabled && guide.brainConnected ? (
             <>
               <h2 className="font-semibold">
                 {!guide.complete

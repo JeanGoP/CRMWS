@@ -4,7 +4,8 @@ import { newId } from "@/lib/db/ids";
 import { scoped } from "@/lib/db/tenant";
 import { normalizeMx } from "@/lib/meta/client";
 import { publish } from "@/server/events/bus";
-import { getCredentialsByPhoneNumberId } from "@/server/whatsapp/credentials";
+import { getCredentialsByOrg, getCredentialsByPhoneNumberId } from "@/server/whatsapp/credentials";
+import type { VinculoWhatsapp } from "@/server/whatsapp/webhook-multiempresa";
 import { ensureAssetAvailable } from "@/server/whatsapp/media";
 import type { Channel } from "@/lib/channels";
 import type {
@@ -266,11 +267,14 @@ export async function getOrCreateConversation(
  * Procesa el `value` de un cambio `messages` del webhook: mensajes entrantes
  * (idempotentes por wa_message_id) y actualizaciones de estado.
  */
-export async function processMessagesValue(value: WebhookValue): Promise<void> {
+export async function processMessagesValue(value: WebhookValue, vinculo?: VinculoWhatsapp): Promise<void> {
   const phoneNumberId = value.metadata?.phone_number_id;
   if (!phoneNumberId) return;
 
-  const credentials = await getCredentialsByPhoneNumberId(phoneNumberId);
+  const credentials = vinculo
+    ? await getCredentialsByOrg(vinculo.organizationId)
+    : await getCredentialsByPhoneNumberId(phoneNumberId);
+  if (vinculo && (credentials?.id !== vinculo.id || credentials.phoneNumberId !== phoneNumberId)) return;
   if (!credentials) {
     // Caso típico: webhook/override configurado ANTES de guardar la conexión
     // en el wizard — el evento llega pero no hay a qué organización enrutarlo.
@@ -330,11 +334,15 @@ export async function processMessagesValue(value: WebhookValue): Promise<void> {
  * como salientes `origin='manual'` y pausan la IA (decisión del dueño
  * 2026-08-04). JAMÁS tocan la ventana de 24 h ni disparan al agente.
  */
-export async function processEchoesValue(value: WebhookValue): Promise<void> {
+export async function processEchoesValue(value: WebhookValue, vinculo?: VinculoWhatsapp): Promise<void> {
   const phoneNumberId = value.metadata?.phone_number_id;
   if (!phoneNumberId) return;
 
-  const credentials = await getCredentialsByPhoneNumberId(phoneNumberId);
+  const credentials = vinculo
+    ? await getCredentialsByOrg(vinculo.organizationId)
+    : await getCredentialsByPhoneNumberId(phoneNumberId);
+  if (vinculo && (credentials?.id !== vinculo.id || credentials.phoneNumberId !== phoneNumberId ||
+      !(await isChannelActiveForOrg("whatsapp", vinculo.organizationId)))) return;
   if (!credentials) {
     console.warn(
       `[webhook] echo para phone_number_id desconocido (${phoneNumberId}): descartado`
@@ -394,7 +402,7 @@ async function ingestManualEcho(
       replyToWaMessageId: citaDelWebhook(echo),
       waTimestamp,
     })
-    .onConflictDoNothing({ target: [schema.message.waMessageId] })
+    .onConflictDoNothing({ target: [schema.message.organizationId, schema.message.waMessageId] })
     .returning();
   const message = inserted[0];
   if (!message) return; // duplicado
@@ -518,7 +526,7 @@ export async function ingestInboundMessage(input: {
       replyToWaMessageId: input.replyToWaMessageId ?? null,
       waTimestamp,
     })
-    .onConflictDoNothing({ target: [schema.message.waMessageId] })
+    .onConflictDoNothing({ target: [schema.message.organizationId, schema.message.waMessageId] })
     .returning();
   const message = inserted[0];
   if (!message) return; // duplicado

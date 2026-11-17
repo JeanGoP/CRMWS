@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { CHANNEL_LABEL, type Channel } from "@/lib/channels";
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { cn } from "@/lib/utils";
 
 /**
@@ -70,7 +71,7 @@ function fecha(iso: string): string {
   return new Date(iso).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" });
 }
 
-export function ChannelsClient() {
+export function ChannelsClient({ multiempresa = false }: { multiempresa?: boolean }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [canManage, setCanManage] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -89,8 +90,8 @@ export function ChannelsClient() {
   const refetch = useCallback(async () => {
     setLoading(true);
     const [data, prefs] = await Promise.all([
-      fetch("/api/settings/channels").then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch("/api/settings/channel-preference").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetchEmpresa("/api/settings/channels").then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      fetchEmpresa("/api/settings/channel-preference").then((r) => (r.ok ? r.json() : null)).catch(() => null),
     ]);
     setLoading(false);
     setNow(Date.now());
@@ -106,13 +107,14 @@ export function ChannelsClient() {
 
   useEffect(() => {
     void refetch();
+    if (multiempresa) return;
     // La URL para quien prefiera crear el webhook a mano en Zernio: cualquiera
     // de las tres sirve, porque el CRM reparte por red.
-    void fetch("/api/settings/webhook")
+    void fetchEmpresa("/api/settings/webhook")
       .then((r) => (r.ok ? r.json() : null))
       .then((w) => setWebhookUrl(w?.instagramUrl ?? w?.messengerUrl ?? w?.tiktokUrl ?? null))
       .catch(() => null);
-  }, [refetch]);
+  }, [multiempresa, refetch]);
 
   async function copy(text: string) {
     try {
@@ -127,7 +129,7 @@ export function ChannelsClient() {
   async function repair() {
     setRepairing(true);
     setNotice(null);
-    const res = await fetch("/api/settings/channels", { method: "POST" }).catch(() => null);
+    const res = await fetchEmpresa("/api/settings/channels", { method: "POST" }).catch(() => null);
     const data = (await res?.json().catch(() => null)) as {
       created?: boolean;
       accounts?: number;
@@ -155,7 +157,7 @@ export function ChannelsClient() {
     if (!preference) return;
     setSavingPreference(true);
     setPreferenceNotice(null);
-    const response = await fetch("/api/settings/channel-preference", {
+    const response = await fetchEmpresa("/api/settings/channel-preference", {
       method: "PUT", headers: { "content-type": "application/json" },
       body: JSON.stringify(preference),
     }).catch(() => null);
@@ -178,14 +180,18 @@ export function ChannelsClient() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      {rows.some((r) => r.channel === "telegram") && preference && (
+      {(multiempresa || rows.some((r) => r.channel === "telegram")) && preference && (
         <Card>
           <CardHeader>
             <CardTitle>Canales que atiende esta empresa</CardTitle>
-            <CardDescription>Elige WhatsApp, Telegram o ambos. Desactivar un canal conserva su conexión y su historial.</CardDescription>
+            <CardDescription>
+              {multiempresa
+                ? "Conecta WhatsApp o Telegram y activa los canales que atenderá esta empresa. Puedes dejar ambos apagados."
+                : "Elige WhatsApp, Telegram o ambos. Desactivar un canal conserva su conexión y su historial."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {(["whatsapp", "telegram"] as const).map((channel) => (
+            {(["whatsapp", "telegram"] as const).filter((channel) => rows.some((row) => row.channel === channel)).map((channel) => (
               <label key={channel} className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={preference[channel]} disabled={!canManage}
                   onChange={(event) => setPreference({ ...preference, [channel]: event.target.checked })} />
@@ -204,9 +210,9 @@ export function ChannelsClient() {
           <div className="space-y-1.5">
             <CardTitle>Estado de los canales</CardTitle>
             <CardDescription>
-              Los canales encendidos en esta instancia: si están conectados,
-              cuándo entró el último mensaje de un cliente y, si llegan por
-              Zernio, cómo están la cuenta y el webhook.
+              {multiempresa
+                ? "Consulta las conexiones y el último mensaje recibido por esta empresa."
+                : "Consulta las conexiones, el último mensaje recibido y el estado de Zernio."}
             </CardDescription>
           </div>
           <Button

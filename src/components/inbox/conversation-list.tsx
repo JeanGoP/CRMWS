@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useRef, useState } from "react";
 import { Clock3, Inbox, Megaphone, SlidersHorizontal, Search, Sparkles, UserRound, X } from "lucide-react";
 import type { ConversationDto } from "@/lib/types";
@@ -48,7 +49,7 @@ function InboxEmptyState({
 
   async function seed() {
     setSeeding(true);
-    const res = await fetch("/api/seed/demo", { method: "POST" }).catch(
+    const res = await fetchEmpresa("/api/seed/demo", { method: "POST" }).catch(
       () => null
     );
     setSeeding(false);

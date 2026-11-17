@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { multiempresaActiva, multiempresaProduccion } from "@/server/empresas/flag";
+import { empresasDeUsuario } from "@/server/empresas/servicio";
 import { cookies, headers } from "next/headers";
 import { getAuth } from "@/lib/auth";
 import { getSessionOrNull } from "@/lib/auth/session";
@@ -17,6 +19,10 @@ export default async function AppLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await getSessionOrNull();
   if (!session) redirect("/login");
+  const gestionManual = multiempresaProduccion();
+  const empresa = multiempresaActiva()
+    ? (await empresasDeUsuario(session.userId)).find(({ id }) => id === session.organizationId)
+    : undefined;
   const branding = await getBranding(session.organizationId);
   const authSession = await getAuth().api.getSession({
     headers: await headers(),
@@ -27,11 +33,12 @@ export default async function AppLayout({
   // El agente encendido y sin con qué pensar se ve desde fuera igual que un
   // bot roto. Se resuelve en el servidor y en el layout para que se vea desde
   // CUALQUIER pantalla, no solo desde el panel de un contacto (#85).
-  const aviso = await avisoIaDe(session.organizationId);
+  const aviso = gestionManual ? null : await avisoIaDe(session.organizationId);
 
   return (
     <AppShell
       branding={branding}
+      empresa={empresa}
       userName={authSession?.user.name ?? "Usuario"}
       role={session.role}
       theme={theme}
@@ -43,8 +50,9 @@ export default async function AppLayout({
       // prop, igual que los canales de la Bandeja. El nav es un componente de
       // cliente: no puede —ni debe— leer variables de entorno.
       agenda={agendaEnabled()}
-      kicker={navKicker([...enabledChannels()])}
-      aviso={<AvisoIaBanner aviso={aviso} />}
+      kicker={gestionManual ? "CRM · Agenda" : navKicker([...enabledChannels()])}
+      gestionManual={gestionManual}
+      aviso={aviso && <AvisoIaBanner aviso={aviso} />}
     >
       {children}
     </AppShell>

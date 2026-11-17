@@ -13,6 +13,8 @@
  * contenedor del cerebro (`http://nea:8000/vocero/dispatch`).
  */
 
+import { multiempresaActiva } from "@/server/empresas/flag";
+
 const MIN_KEY_LENGTH = 16;
 
 export type ProblemaDespacho =
@@ -29,6 +31,7 @@ type Entorno = Record<string, string | undefined>;
 
 /** Pura sobre el entorno que recibe: la usan el worker, la tarjeta y `pnpm doctor`. */
 export function leerConfigDespacho(env: Entorno = process.env): ConfigDespacho {
+  if (multiempresaActiva(env)) return { active: false, host: null, problem: null };
   const raw = env.BRAIN_DISPATCH_URL?.trim();
   if (!raw) return { active: false, host: null, problem: null };
 
@@ -65,6 +68,7 @@ export function despachoActivo(): boolean {
  * si no hay ninguna de las dos.
  */
 export function urlSaludCerebro(env: Entorno = process.env): string | null {
+  if (multiempresaActiva(env)) return null;
   const directa = env.BRAIN_HEALTH_URL?.trim();
   if (directa) return directa;
   const despacho = leerConfigDespacho(env);

@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,7 @@ const DAYS: { key: DayKey; label: string }[] = [
 
 const DEFAULT_INTERVAL: Interval = { start: "09:00", end: "18:00" };
 
-export function AgendaClient() {
+export function AgendaClient({ piloto = false }: { piloto?: boolean }) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [slots, setSlots] = useState<{ label: string }[] | null>(null);
   const [saving, setSaving] = useState(false);
@@ -72,8 +73,8 @@ export function AgendaClient() {
   useEffect(() => {
     void (async () => {
       const [cfg, avail] = await Promise.all([
-        fetch("/api/calendar/settings").catch(() => null),
-        fetch("/api/calendar/availability").catch(() => null),
+        fetchEmpresa("/api/calendar/settings").catch(() => null),
+        fetchEmpresa("/api/calendar/availability").catch(() => null),
       ]);
       if (cfg?.ok) {
         const data = (await cfg.json()) as { settings: Settings };
@@ -85,12 +86,12 @@ export function AgendaClient() {
       } else {
         setSlots([]);
       }
-      const templateRes = await fetch("/api/templates").catch(() => null);
+      const templateRes = await fetchEmpresa("/api/templates").catch(() => null);
       if (templateRes?.ok) {
         const data = (await templateRes.json()) as { templates: ReminderTemplate[] };
         setTemplates(data.templates.filter((t) => t.status === "approved" && t.category === "UTILITY" && countVariables(t.body) === 3));
       }
-      const channelRes = await fetch("/api/settings/channel-preference").catch(() => null);
+      const channelRes = await fetchEmpresa("/api/settings/channel-preference").catch(() => null);
       if (channelRes?.ok) {
         const data = (await channelRes.json()) as { preference: { whatsapp: boolean; telegram: boolean } };
         setWhatsappActive(data.preference.whatsapp);
@@ -100,7 +101,7 @@ export function AgendaClient() {
   }, []);
 
   async function refreshPreview() {
-    const res = await fetch("/api/calendar/availability").catch(() => null);
+    const res = await fetchEmpresa("/api/calendar/availability").catch(() => null);
     if (!res?.ok) return setSlots([]);
     const data = (await res.json()) as { slots: { label: string }[] };
     setSlots(data.slots.slice(0, 5));
@@ -152,7 +153,7 @@ export function AgendaClient() {
     setSaving(true);
     setError(null);
     setSaved(false);
-    const res = await fetch("/api/calendar/settings", {
+    const res = await fetchEmpresa("/api/calendar/settings", {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -327,13 +328,12 @@ export function AgendaClient() {
         <CardHeader>
           <CardTitle>Calendario para las citas</CardTitle>
           <CardDescription>
-            Elige dónde consultar la disponibilidad y guardar nuevas citas. El
-            calendario interno funciona sin conectar cuentas externas. Google
-            y Microsoft son opcionales y requieren conectar la cuenta de cada negocio.
+            {piloto ? "Las citas se guardan en el calendario interno de cada empresa."
+              : "Elige dónde consultar la disponibilidad y guardar nuevas citas. Google y Microsoft son opcionales y requieren conectar la cuenta de cada negocio."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          {CONNECTOR_ORDER.map((id) => {
+          {CONNECTOR_ORDER.filter((id) => !piloto || !CONNECTOR_META[id].external).map((id) => {
             const meta = CONNECTOR_META[id];
             const active = settings.connector === id;
             return (
@@ -390,6 +390,7 @@ export function AgendaClient() {
         </Card>
       )}
 
+      {!piloto && <>
       <PrivacyNoticeCard currentUrl={settings.privacyNoticeUrl}
         onPublished={(url) => patch({ privacyNoticeUrl: url })} />
       <details className="rounded-xl border bg-card p-4 text-sm">
@@ -434,6 +435,8 @@ export function AgendaClient() {
         </CardContent>
       </Card>
 
+      </>}
+
       <div className="flex items-center gap-3">
         <Button onClick={save} disabled={saving}>
           {saving ? "Guardando…" : "Guardar"}
@@ -444,7 +447,7 @@ export function AgendaClient() {
 
       {/* Las credenciales se guardan por su cuenta, no con el botón de arriba:
           se validan contra el proveedor antes de tocar la base. */}
-      {settings.connector !== "enlace-fijo" && (
+      {!piloto && settings.connector !== "enlace-fijo" && (
         <ConnectorCredentials connector={settings.connector} />
       )}
 

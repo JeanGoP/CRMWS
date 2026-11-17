@@ -1,4 +1,6 @@
 import {
+  BookOpen,
+  Building2,
   CalendarDays,
   ChartColumn,
   FlaskConical,
@@ -50,11 +52,15 @@ export const SETTINGS_ITEM: NavItem = {
 export function appNavGroups({
   agenda = false,
   role,
+  multiempresa = false,
+  gestionManual = false,
 }: {
   /** 015 — "Citas" solo existe si esta instancia encendió la agenda. */
   agenda?: boolean;
   /** #86 — La guía de inicio solo para quien puede configurar. */
   role?: string | null;
+  multiempresa?: boolean;
+  gestionManual?: boolean;
 }): NavGroup[] {
   const trabajo: NavItem[] = [
     { href: "/inbox", label: "Bandeja", icon: Inbox, badge: true },
@@ -64,20 +70,22 @@ export function appNavGroups({
   // Citas va después de Contactos: es el paso siguiente de un trato, no una
   // sección aparte.
   if (agenda) trabajo.push({ href: "/bookings", label: "Citas", icon: CalendarDays });
+  if (gestionManual) trabajo.push({ href: "/catalogo", label: "Catálogo", icon: BookOpen });
 
   const agente: NavItem[] = [];
+  const configura = canConfigure(role);
   // Un miembro del equipo no puede hacer ninguno de los pasos de la guía.
-  if (canConfigure(role)) {
+  if (configura && (!multiempresa || gestionManual)) {
     agente.push({ href: "/onboarding", label: "Guía de inicio", icon: ListChecks });
   }
-  agente.push(
-    { href: "/agent", label: "Agente", icon: Sparkles },
-    { href: "/lab", label: "Laboratorio", icon: FlaskConical }
-  );
+  if (!gestionManual || configura) agente.push({ href: "/agent", label: "Agente", icon: Sparkles });
+  if (!multiempresa) agente.push({ href: "/lab", label: "Laboratorio", icon: FlaskConical });
 
+  const empresas = { items: [{ href: "/empresas", label: "Empresas", icon: Building2 }] };
   return [
+    ...(multiempresa ? [empresas] : []),
     { title: "Trabajo", items: trabajo },
-    { title: "Agente", items: agente },
+    ...(agente.length ? [{ title: "Agente", items: agente }] : []),
     // 019 — Se mide al final: primero se atiende y se organiza.
     { items: [{ href: "/results", label: "Resultados", icon: ChartColumn }] },
   ];
@@ -107,6 +115,7 @@ export function settingsSections({
   tiktok = false,
   telegram = false,
   cartera = false,
+  canalesMultiempresa = false,
 }: {
   agenda?: boolean;
   /** 016 — "Anuncios" existe solo con la bandera ATRIBUCION. */
@@ -119,11 +128,12 @@ export function settingsSections({
   tiktok?: boolean;
   telegram?: boolean;
   cartera?: boolean;
+  canalesMultiempresa?: boolean;
 }): SettingsSection[] {
   const canales: SettingsLink[] = [];
   // 023 — "Estado" reúne todos los canales; con WhatsApp solo no aporta nada
   // que su pantalla no diga, así que no existe (ADR-001).
-  if (instagram || messenger || tiktok || telegram) {
+  if (instagram || messenger || tiktok || telegram || canalesMultiempresa) {
     canales.push({ href: "/settings/channels", label: "Estado" });
   }
   canales.push({ href: "/settings/whatsapp", label: "WhatsApp" });

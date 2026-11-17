@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Inbox } from "lucide-react";
@@ -65,7 +66,7 @@ export function BrandingClient({
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    fetch("/api/settings/branding")
+    fetchEmpresa("/api/settings/branding")
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { branding: Branding } | null) => {
         if (d) {
@@ -89,7 +90,7 @@ export function BrandingClient({
     setSaving(true);
     setError(null);
     setSaved(false);
-    const res = await fetch("/api/settings/branding", {
+    const res = await fetchEmpresa("/api/settings/branding", {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: name.trim(), accent, currency }),

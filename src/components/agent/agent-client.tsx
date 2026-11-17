@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Plus, Sparkles, Trash2 } from "lucide-react";
@@ -30,7 +31,7 @@ type Profile = {
   tools: ClaveHerramienta[];
 };
 
-type KbEntry = {
+export type KbEntry = {
   id: string;
   kind: "qa" | "block";
   question: string | null;
@@ -38,35 +39,36 @@ type KbEntry = {
   content: string | null;
 };
 
-export function AgentClient() {
+export function AgentClient({ soloConfiguracion = false }: { soloConfiguracion?: boolean }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [aiConfigured, setAiConfigured] = useState(true);
   const [aiMensaje, setAiMensaje] = useState<string | null>(null);
   const [entries, setEntries] = useState<KbEntry[]>([]);
   const [kbSize, setKbSize] = useState<{ chars: number; warnAt: number; warning: boolean } | null>(null);
   const [saved, setSaved] = useState(false);
-  // 036 — Por qué no se pudo encender (409 `sin_cerebro`): el mensaje del
-  // servidor, tal cual, junto al interruptor.
-  const [switchError, setSwitchError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [agendaEnabled, setAgendaEnabled] = useState(false);
   // «Quién responde»: se refresca solo, porque la última llamada del cerebro
   // externo y su /health cambian sin que nadie toque esta pantalla.
   const [brain, setBrain] = useState<BrainStatusDto | null>(null);
 
   const loadBrain = useCallback(async () => {
-    const b = await fetch("/api/agent/brain-status")
+    if (soloConfiguracion) return;
+    const b = await fetchEmpresa("/api/agent/brain-status")
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null);
     setBrain(b);
-  }, []);
+  }, [soloConfiguracion]);
 
   const refetch = useCallback(async () => {
     const [p, kb, size] = await Promise.all([
-      fetch("/api/agent/profile").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/kb").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/kb/size").then((r) => (r.ok ? r.json() : null)),
+      fetchEmpresa("/api/agent/profile").then((r) => (r.ok ? r.json() : null)),
+      fetchEmpresa("/api/kb").then((r) => (r.ok ? r.json() : null)),
+      fetchEmpresa("/api/kb/size").then((r) => (r.ok ? r.json() : null)),
       loadBrain(),
     ]).catch(() => [null, null, null]);
+    setLoadFailed(!p);
     if (p) {
       setProfile(p.profile);
       setAiConfigured(p.aiConfigured);
@@ -82,14 +84,16 @@ export function AgentClient() {
   }, [refetch]);
 
   useEffect(() => {
+    if (soloConfiguracion) return;
     const id = setInterval(() => void loadBrain(), 30_000);
     return () => clearInterval(id);
-  }, [loadBrain]);
+  }, [loadBrain, soloConfiguracion]);
 
   if (!profile) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-        Cargando…
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+        <p role={loadFailed ? "alert" : "status"}>{loadFailed ? "No se pudo cargar el perfil del agente." : "Cargando…"}</p>
+        {loadFailed && <Button variant="outline" onClick={() => void refetch()}>Reintentar</Button>}
       </div>
     );
   }
@@ -99,18 +103,24 @@ export function AgentClient() {
       `Cargar el rol «${ROLES.calificador.etiqueta}» reemplaza las instrucciones y las reglas de escalado, y enciende todas sus herramientas. ¿Continuar?`
     );
     if (!ok) return;
-    await fetch("/api/agent/profile/preset", {
+    setSaveError(null);
+    const res = await fetchEmpresa("/api/agent/profile/preset", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ role: "calificador" }),
     }).catch(() => null);
+    if (!res?.ok) {
+      setSaveError("No se pudo cargar el rol. Intenta de nuevo.");
+      return;
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
     void refetch();
   }
 
   async function saveProfile(patch: Partial<Profile>): Promise<boolean> {
-    const res = await fetch("/api/agent/profile", {
+    setSaveError(null);
+    const res = await fetchEmpresa("/api/agent/profile", {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(patch),
@@ -119,16 +129,9 @@ export function AgentClient() {
       const data = (await res?.json().catch(() => null)) as {
         error?: { message?: string };
       } | null;
-      if (patch.enabled !== undefined) {
-        setSwitchError(
-          data?.error?.message ??
-            (patch.enabled ? "No se pudo encender el agente." : "No se pudo apagar el agente.")
-        );
-      }
-      void refetch();
+      setSaveError(data?.error?.message ?? "No se pudo guardar el cambio.");
       return false;
     }
-    if (patch.enabled !== undefined) setSwitchError(null);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
     void refetch();
@@ -139,7 +142,7 @@ export function AgentClient() {
   // servidor lo exige igual: 409 `sin_cerebro`). Apagarlo se puede siempre:
   // un perfil que quedó encendido sin cerebro no debe quedarse atrapado.
   const brainConnected = brain?.dispatch.active === true;
-  const switchDisabled = !profile.enabled && brain !== null && !brainConnected;
+  const switchDisabled = !soloConfiguracion && !profile.enabled && brain !== null && !brainConnected;
 
   // 036 — Sin llave de IA el agente conectado no tiene con qué pensar (piensa
   // por el CRM, `/api/bot/llm`). Sin agente conectado no hace falta pedirla:
@@ -154,7 +157,7 @@ export function AgentClient() {
         <div className="flex items-center gap-3">
           {saved && <span className="text-xs text-primary">Guardado ✓</span>}
           <span className="text-sm text-muted-foreground">
-            {profile.enabled ? "Encendido" : "Apagado"}
+            {soloConfiguracion ? "Atención manual" : profile.enabled ? "Encendido" : "Apagado"}
           </span>
           {/* El interruptor compartido (#53): el pomo propio de aquí era
               `absolute` sin `left`, arrancaba del centro de la pista y
@@ -162,23 +165,23 @@ export function AgentClient() {
           {/* Encender exige IA; APAGAR se puede siempre. Con la llave pausada
               (#85) el agente sigue «encendido» sin poder pensar, y un
               interruptor bloqueado dejaría al dueño sin forma de callarlo. */}
-          <Switch
+          {!soloConfiguracion && <Switch
             checked={profile.enabled}
             disabled={switchDisabled}
             label="Agente encendido"
             onCheckedChange={(enabled) => void saveProfile({ enabled })}
-          />
+          />}
         </div>
-        {(switchError || switchDisabled) && (
+        {(saveError || switchDisabled) && (
           <p
-            role={switchError ? "alert" : undefined}
+            role={saveError ? "alert" : undefined}
             className={
-              switchError
+              saveError
                 ? "w-full text-right text-xs text-danger-text"
                 : "w-full text-right text-xs text-muted-foreground"
             }
           >
-            {switchError ?? "Se enciende cuando conectes tu agente."}
+            {saveError ?? "Se enciende cuando conectes tu agente."}
           </p>
         )}
       </header>
@@ -213,6 +216,7 @@ export function AgentClient() {
         <RolSection
           profile={profile}
           agendaEnabled={agendaEnabled}
+          soloConfiguracion={soloConfiguracion}
           onTools={(tools) => void saveProfile({ tools })}
           onPreset={() => void cargarPreset()}
         />
@@ -230,11 +234,13 @@ export function AgentClient() {
 function RolSection({
   profile,
   agendaEnabled,
+  soloConfiguracion,
   onTools,
   onPreset,
 }: {
   profile: Profile;
   agendaEnabled: boolean;
+  soloConfiguracion: boolean;
   onTools: (tools: ClaveHerramienta[]) => void;
   onPreset: () => void;
 }) {
@@ -280,9 +286,9 @@ function RolSection({
             </li>
           ))}
         </ul>
-        <p className="text-xs text-muted-foreground">
+        {!soloConfiguracion && <p className="text-xs text-muted-foreground">
           El agente toma los cambios en unos minutos, sin redesplegar nada.
-        </p>
+        </p>}
       </CardContent>
     </Card>
   );
@@ -369,14 +375,16 @@ function ProfileSection({
   );
 }
 
-function KbSection({
+export function KbSection({
   entries,
   kbSize,
   onChanged,
+  catalogo = false,
 }: {
   entries: KbEntry[];
   kbSize: { chars: number; warnAt: number; warning: boolean } | null;
   onChanged: () => void;
+  catalogo?: boolean;
 }) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -384,7 +392,7 @@ function KbSection({
 
   async function addQa() {
     if (!question.trim() || !answer.trim()) return;
-    await fetch("/api/kb", {
+    await fetchEmpresa("/api/kb", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ kind: "qa", question, answer }),
@@ -396,7 +404,7 @@ function KbSection({
 
   async function addBlock() {
     if (!block.trim()) return;
-    await fetch("/api/kb", {
+    await fetchEmpresa("/api/kb", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ kind: "block", content: block }),
@@ -406,7 +414,7 @@ function KbSection({
   }
 
   async function remove(id: string) {
-    await fetch(`/api/kb/${id}`, { method: "DELETE" }).catch(() => null);
+    await fetchEmpresa(`/api/kb/${id}`, { method: "DELETE" }).catch(() => null);
     onChanged();
   }
 
@@ -415,10 +423,10 @@ function KbSection({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Knowledge base</CardTitle>
+            <CardTitle>{catalogo ? "Información de la empresa" : "Knowledge base"}</CardTitle>
             <CardDescription>
-              La única fuente de verdad del agente: lo que no está aquí, no lo
-              afirma.
+              {catalogo ? "Guarda los servicios, precios y condiciones que usa tu equipo al cotizar."
+                : "La única fuente de verdad del agente: lo que no está aquí, no lo afirma."}
             </CardDescription>
           </div>
           {kbSize && (

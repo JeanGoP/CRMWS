@@ -1,3 +1,4 @@
+import { multiempresaActiva } from "@/server/empresas/flag";
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
 import { CONNECTOR_ORDER } from "@/lib/agenda-connectors";
@@ -63,6 +64,10 @@ export const PUT = withAuth(async (session, req: Request) => {
   if (!canConfigure(session.role)) return apiError(403, "forbidden", "Solo el propietario o un administrador puede configurar la agenda");
   const body = await parseBody(req, putSchema);
   if (!body.ok) return body.response;
+  if (multiempresaActiva() && (body.data.reminderEnabled ||
+    (body.data.connector && body.data.connector !== "enlace-fijo"))) {
+    return apiError(409, "solo_agenda_interna", "La gestión manual usa la agenda interna sin recordatorios automáticos");
+  }
 
   try {
     const settings = await upsertSettings(session.organizationId, {

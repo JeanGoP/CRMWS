@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import {
   useEffect,
   useLayoutEffect,
@@ -103,7 +104,7 @@ export function Composer({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/templates")
+    fetchEmpresa("/api/templates")
       .then((r) => (r.ok ? r.json() : { templates: [] }))
       .then((d: { templates?: TemplateDto[] }) => {
         if (!cancelled)
@@ -162,7 +163,7 @@ export function Composer({
   // conversación (028 D5).
   useEffect(() => {
     let vivo = true;
-    fetch("/api/quick-replies")
+    fetchEmpresa("/api/quick-replies")
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { respuestas?: RespuestaRapida[]; puedeEditar?: boolean } | null) => {
         if (!vivo || !d) return;
@@ -330,7 +331,7 @@ export function Composer({
 
   async function apiSend(path: string, init: RequestInit): Promise<string | null> {
     try {
-      const res = await fetch(path, init);
+      const res = await fetchEmpresa(path, init);
       if (res.ok) return null;
       // apiError responde `{ error: { code, message } }`.
       const data = (await res.json().catch(() => null)) as {

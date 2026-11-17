@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * #86 — Quién entra a la guía y a dónde manda la raíz. Las dos páginas se
@@ -7,11 +7,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getSessionOrNull = vi.hoisted(() => vi.fn());
 const guideStatus = vi.hoisted(() => vi.fn());
+const guideMultiempresa = vi.hoisted(() => vi.fn());
 const guideFirst = vi.hoisted(() => vi.fn());
 const launchChecklist = vi.hoisted(() => vi.fn(async () => []));
 
 vi.mock("@/lib/auth/session", () => ({ getSessionOrNull }));
 vi.mock("@/server/onboarding/guide", () => ({ guideStatus, guideFirst }));
+vi.mock("@/server/onboarding/guide-multiempresa", () => ({ guideMultiempresa }));
 vi.mock("@/server/onboarding/launch-checklist", () => ({ launchChecklist }));
 vi.mock("@/components/onboarding/onboarding-client", () => ({
   OnboardingClient: () => null,
@@ -42,8 +44,13 @@ const member = { userId: "usr_2", organizationId: "org_1", role: "member" };
 beforeEach(() => {
   getSessionOrNull.mockReset();
   guideStatus.mockReset();
+  guideMultiempresa.mockReset();
   guideFirst.mockReset();
+  launchChecklist.mockClear();
+  vi.stubEnv("MULTIEMPRESA_PRODUCCION", "");
+  vi.stubEnv("MULTIEMPRESA_PILOTO", "");
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe("quién configura", () => {
   it("el propietario y un admin; un miembro del equipo no", () => {
@@ -72,6 +79,30 @@ describe("/onboarding", () => {
     const page = (await OnboardingPage()) as { props: { agentName: string | null } };
     expect(guideStatus).toHaveBeenCalledWith("org_1");
     expect(page.props.agentName).toBe("Sofi");
+  });
+
+  it("multiempresa real muestra la guía manual de la empresa activa", async () => {
+    vi.stubEnv("MULTIEMPRESA_PRODUCCION", "on");
+    getSessionOrNull.mockResolvedValue({ ...owner, organizationId: "org_activa" });
+    const guide = { steps: [], complete: true, enabled: false, brainConnected: false };
+    guideMultiempresa.mockResolvedValue(guide);
+    const page = (await OnboardingPage()) as { props: { manual: boolean; guide: object; checks: unknown[] } };
+    expect(guideMultiempresa).toHaveBeenCalledWith("org_activa");
+    expect(page.props).toMatchObject({ manual: true, guide, checks: [] });
+    expect(guideStatus).not.toHaveBeenCalled();
+    expect(launchChecklist).not.toHaveBeenCalled();
+  });
+
+  it("multiempresa conserva el límite para los miembros y la restricción del piloto", async () => {
+    vi.stubEnv("MULTIEMPRESA_PRODUCCION", "on");
+    getSessionOrNull.mockResolvedValue(member);
+    await expect(OnboardingPage()).rejects.toThrow("redirect:/inbox");
+    vi.stubEnv("MULTIEMPRESA_PRODUCCION", "");
+    vi.stubEnv("MULTIEMPRESA_PILOTO", "on");
+    getSessionOrNull.mockResolvedValue(owner);
+    await expect(OnboardingPage()).rejects.toThrow("redirect:/empresas");
+    expect(guideMultiempresa).not.toHaveBeenCalled();
+    expect(guideStatus).not.toHaveBeenCalled();
   });
 });
 

@@ -116,7 +116,7 @@ export async function barrido(ahora: Date = new Date()): Promise<number> {
 
 async function intentar(fila: FilaEvento): Promise<void> {
   try {
-    await procesarFuente(fila.fuente, fila.payload);
+    await procesarFuente(fila.fuente, fila.payload, fila.organizationId);
   } catch (err) {
     const cuando = await reintentarOAgotar(fila, err);
     if (cuando) {

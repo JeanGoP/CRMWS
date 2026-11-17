@@ -241,4 +241,18 @@ describe("la carrera del hueco", () => {
     });
     expect(inserted).toHaveLength(0);
   });
+
+  it("no vincula una cita con un contacto fuera de la organización", async () => {
+    const { createSessionBooking } = await import("@/server/agenda/service");
+    selectRows.push([]);
+
+    await expect(createSessionBooking({
+      organizationId: "org_1",
+      contactId: "ct_otra_empresa",
+      startUtc: SLOT,
+      source: "manual",
+      requireOffer: false,
+    })).rejects.toMatchObject({ code: "not_found" });
+    expect(inserted).toHaveLength(0);
+  });
 });

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
+import { DOM_EMPRESA, EVENTO_EMPRESA } from "@/lib/empresas-contexto";
 import type { Branding } from "@/lib/branding";
 import type { ThemePreference } from "@/lib/theme";
 import type { ResolvedCommit } from "@/lib/version";
@@ -23,16 +24,19 @@ import { BrandLogo } from "@/components/brand-mark";
  */
 export function AppShell({
   branding,
+  empresa,
   userName,
   role,
   theme,
   commit,
   agenda = false,
+  gestionManual = false,
   kicker,
   aviso = null,
   children,
 }: {
   branding: Branding;
+  empresa?: { id: string; nombre: string };
   userName: string;
   role: string;
   theme: ThemePreference;
@@ -40,6 +44,7 @@ export function AppShell({
   commit?: ResolvedCommit;
   /** 015 — ¿esta instancia tiene agenda? Lo decide el servidor. */
   agenda?: boolean;
+  gestionManual?: boolean;
   /** 028 — La etiqueta bajo el logo (`navKicker`). */
   kicker?: string;
   /**
@@ -71,8 +76,24 @@ export function AppShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [navOpen]);
 
+  useEffect(() => {
+    if (!empresa) return;
+    const cambio = (event: StorageEvent) => {
+      if (event.key === EVENTO_EMPRESA) window.location.reload();
+    };
+    const restaurar = (event: PageTransitionEvent) => {
+      if (event.persisted) window.location.reload();
+    };
+    window.addEventListener("storage", cambio);
+    window.addEventListener("pageshow", restaurar);
+    return () => {
+      window.removeEventListener("storage", cambio);
+      window.removeEventListener("pageshow", restaurar);
+    };
+  }, [empresa]);
+
   return (
-    <div className="flex h-dvh overflow-hidden bg-background">
+    <div id={empresa ? DOM_EMPRESA : undefined} data-empresa-id={empresa?.id} className="flex h-dvh overflow-hidden bg-background">
       {navOpen && (
         <button
           aria-label="Cerrar el menú"
@@ -84,11 +105,13 @@ export function AppShell({
 
       <AppNav
         branding={branding}
+        empresa={empresa?.nombre}
         commit={commit}
         userName={userName}
         role={role}
         theme={theme}
         agenda={agenda}
+        gestionManual={gestionManual}
         kicker={kicker}
         open={navOpen}
         onClose={() => setNavOpen(false)}
@@ -107,6 +130,7 @@ export function AppShell({
             <Menu className="h-5 w-5" strokeWidth={1.8} />
           </button>
           <BrandLogo branding={branding} className="min-w-0" />
+          {empresa && <span className="ml-auto truncate text-xs text-text-2">{empresa.nombre}</span>}
         </header>
 
         {aviso}

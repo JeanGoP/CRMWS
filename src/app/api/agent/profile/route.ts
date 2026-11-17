@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { apiError, parseBody, withAuth } from "@/lib/api";
+import { canConfigure } from "@/lib/auth/roles";
 import { getDb, schema } from "@/lib/db";
 import { scoped } from "@/lib/db/tenant";
 import { estadoIaDe, mensajeDeEstado } from "@/lib/ai/provider";
@@ -12,10 +13,15 @@ import {
 import { agendaEnabled } from "@/server/agenda/flag";
 import { leerConfigDespacho, urlSaludCerebro } from "@/server/brains/config";
 import { getBrainHealth } from "@/server/bot/status";
+import { multiempresaProduccion } from "@/server/empresas/flag";
 
 export const dynamic = "force-dynamic";
 
-export const GET = withAuth(async (session) => {
+export const GET = withAuth(async (session, _req: Request) => {
+  const soloConfiguracion = multiempresaProduccion();
+  if (soloConfiguracion && !canConfigure(session.role)) {
+    return apiError(403, "forbidden", "Solo quien administra puede ver el perfil del agente");
+  }
   const db = getDb();
   const rows = await db
     .select()
@@ -24,10 +30,10 @@ export const GET = withAuth(async (session) => {
     .limit(1);
   const p = rows[0];
   if (!p) return apiError(404, "not_found", "Perfil del agente no encontrado");
-  const estado = await estadoIaDe(session.organizationId);
+  const estado = soloConfiguracion ? null : await estadoIaDe(session.organizationId);
   return Response.json({
     profile: {
-      enabled: p.enabled,
+      enabled: !soloConfiguracion && p.enabled,
       name: p.name,
       tone: p.tone,
       instructions: p.instructions,
@@ -39,10 +45,10 @@ export const GET = withAuth(async (session) => {
     },
     // 034 — Sin la bandera, la pantalla no ofrece agendar ni reprogramar.
     agendaEnabled: agendaEnabled(),
-    aiConfigured: estado.activa,
+    aiConfigured: estado?.activa ?? false,
     // Por qué no (sin configurar, llave rechazada, sin saldo): la pantalla
     // Agente lo dice con el enlace a Ajustes → IA.
-    aiMensaje: mensajeDeEstado(estado),
+    aiMensaje: estado ? mensajeDeEstado(estado) : null,
   });
 });
 
@@ -61,6 +67,10 @@ const putSchema = z.object({
 });
 
 export const PUT = withAuth(async (session, req: Request) => {
+  const soloConfiguracion = multiempresaProduccion();
+  if (soloConfiguracion && !canConfigure(session.role)) {
+    return apiError(403, "forbidden", "Solo quien administra puede editar el perfil del agente");
+  }
   const body = await parseBody(req, putSchema);
   if (!body.ok) return body.response;
 
@@ -68,6 +78,9 @@ export const PUT = withAuth(async (session, req: Request) => {
   // sin un cerebro que conteste dejaría a los clientes sin respuesta creyendo
   // que la tienen; apagarlo siempre se puede.
   if (body.data.enabled === true) {
+    if (soloConfiguracion) {
+      return apiError(409, "agente_solo_configuracion", "En esta instalación el equipo atiende desde la Bandeja.");
+    }
     const problema = await problemaDelCerebro();
     if (problema) return apiError(409, "sin_cerebro", problema);
   }

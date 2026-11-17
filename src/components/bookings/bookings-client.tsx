@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useEvents } from "@/components/use-events";
 import { Switch } from "@/components/ui/switch";
@@ -32,6 +33,7 @@ import { BlockDialog } from "./block-dialog";
 import { BookingDrawer, type ActResult } from "./booking-drawer";
 import type { Booking } from "./booking-look";
 import { CalendarToolbar } from "./calendar-toolbar";
+import { CreateBookingDialog } from "./create-booking-dialog";
 import { MonthGrid } from "./month-grid";
 import { TimeGrid } from "./time-grid";
 
@@ -42,7 +44,7 @@ import { TimeGrid } from "./time-grid";
  *
  * Solo se piden las citas del rango visible (`/api/bookings?from=&to=`), y la
  * vista se mantiene viva por SSE: la IA agenda mientras alguien mira. La
- * disponibilidad NO se pide aquí: solo al abrir «Reprogramar».
+ * disponibilidad se pide al abrir «Reprogramar» o «Nueva cita».
  */
 
 /** Preferencias de quien mira, en su navegador: no son datos del negocio. */
@@ -79,12 +81,14 @@ export function BookingsClient({
   initialListTo,
   timezone: initialTimezone,
   weeklyHours: initialWeeklyHours,
+  permiteCrearCita = false,
 }: {
   initialView: CalendarView | null;
   initialDate: string;
   initialListTo: string | null;
   timezone: string;
   weeklyHours: WeeklyHours;
+  permiteCrearCita?: boolean;
 }) {
   // La vista se resuelve al montar (URL › última usada › tamaño de pantalla):
   // el servidor no sabe si esto es un celular.
@@ -101,6 +105,7 @@ export function BookingsClient({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [snapshot, setSnapshot] = useState<Booking | null>(null);
   const [blockDraft, setBlockDraft] = useState<{ day: string; time: string } | null>(null);
+  const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [now, setNow] = useState<number | null>(null);
   const seq = useRef(0);
@@ -136,7 +141,7 @@ export function BookingsClient({
     const [from, to] = key.split("|") as [string, string];
     const id = ++seq.current;
     setLoading(true);
-    const res = await fetch(`/api/bookings?from=${from}&to=${to}`).catch(() => null);
+    const res = await fetchEmpresa(`/api/bookings?from=${from}&to=${to}`).catch(() => null);
     const data = res?.ok
       ? ((await res.json().catch(() => null)) as {
           bookings: Booking[];
@@ -221,10 +226,9 @@ export function BookingsClient({
 
   const closeDrawer = useCallback(() => setSelectedId(null), []);
 
-  /** Lleva el calendario a un día si no se ve en pantalla. */
+  /** Devuelve si el día está fuera del rango y se inicia otra consulta. */
   function reveal(day: string) {
-    if (!view || !range) return;
-    if (day >= range.from && day <= range.to) return;
+    if (!view || !range || (day >= range.from && day <= range.to)) return false;
     if (view === "lista") {
       const span = daysBetween(range.from, range.to);
       setAnchor(day);
@@ -232,6 +236,7 @@ export function BookingsClient({
     } else {
       setAnchor(day);
     }
+    return true;
   }
 
   function changeView(next: CalendarView) {
@@ -290,7 +295,7 @@ export function BookingsClient({
   }
 
   async function act(b: Booking, body: Record<string, unknown>): Promise<ActResult> {
-    const res = await fetch(`/api/bookings/${b.id}`, {
+    const res = await fetchEmpresa(`/api/bookings/${b.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
@@ -332,6 +337,11 @@ export function BookingsClient({
         onView={changeView}
         onListRange={changeListRange}
         onBlock={() => openBlock()}
+        onCreate={permiteCrearCita ? () => {
+          setSelectedId(null);
+          setNotice(null);
+          setCreating(true);
+        } : undefined}
       />
 
       {/* En escritorio ancho el panel de la cita EMPUJA el calendario en vez
@@ -373,7 +383,7 @@ export function BookingsClient({
                   completas.
                 </p>
               )}
-              {notice && <p className="text-sm text-text-2">{notice}</p>}
+              {notice && <p role="status" className="text-sm text-text-2">{notice}</p>}
             </div>
           )}
 
@@ -440,6 +450,19 @@ export function BookingsClient({
             setBlockDraft(null);
             reveal(day);
             void reload();
+          }}
+        />
+      )}
+      {creating && (
+        <CreateBookingDialog
+          initialDay={anchor >= today ? anchor : today}
+          timezone={timezone}
+          onCancel={() => setCreating(false)}
+          onCreated={(day, bookingId) => {
+            setCreating(false);
+            setSelectedId(bookingId);
+            setNotice("Cita agendada.");
+            if (!reveal(day)) void reload();
           }}
         />
       )}

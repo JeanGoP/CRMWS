@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { MAX_RANGE_DAYS, type CalendarView } from "@/lib/time/calendar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ export function CalendarToolbar({
   onView,
   onListRange,
   onBlock,
+  onCreate,
 }: {
   view: CalendarView;
   anchor: string;
@@ -51,6 +52,7 @@ export function CalendarToolbar({
   onView: (view: CalendarView) => void;
   onListRange: (from: string, to: string) => void;
   onBlock: () => void;
+  onCreate?: () => void;
 }) {
   const picker = useRef<HTMLInputElement>(null);
 
@@ -133,7 +135,7 @@ export function CalendarToolbar({
         <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-border-strong border-t-brand" aria-label="Cargando" />
       )}
 
-      <div className="ml-auto flex items-center gap-2">
+      <div className={cn("ml-auto flex items-center gap-2", onCreate && "max-w-full flex-wrap justify-end")}>
         <div role="group" aria-label="Vista" className="inline-flex rounded-full border bg-secondary p-0.5">
           {(Object.keys(VIEW_LABEL) as CalendarView[]).map((v) => (
             <button
@@ -150,10 +152,16 @@ export function CalendarToolbar({
             </button>
           ))}
         </div>
-        <Button size="sm" onClick={onBlock} aria-label="Bloquear horario">
-          <Plus className="h-4 w-4" />
+        <Button size="sm" variant={onCreate ? "outline" : "default"} onClick={onBlock} aria-label="Bloquear horario">
+          <Plus className="h-4 w-4" aria-hidden />
           <span className="hidden sm:inline">Bloquear horario</span>
         </Button>
+        {onCreate && (
+          <Button size="sm" onClick={onCreate}>
+            <CalendarPlus className="h-4 w-4" aria-hidden />
+            Nueva cita
+          </Button>
+        )}
       </div>
     </header>
   );

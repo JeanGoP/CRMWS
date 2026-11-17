@@ -42,6 +42,7 @@ export async function graphRequest<T>(
     method?: "GET" | "POST" | "DELETE";
     token: string;
     body?: unknown;
+    fresh?: boolean;
   }
 ): Promise<T> {
   const env = getEnv();
@@ -57,6 +58,9 @@ export async function graphRequest<T>(
           : {}),
       },
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      ...(opts.fresh
+        ? { cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8_000) }
+        : {}),
     });
   } catch (cause) {
     throw new MetaApiError("No se pudo contactar la API de Meta", {

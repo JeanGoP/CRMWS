@@ -1,15 +1,16 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { isChannelEnabled } from "@/server/channels/enabled";
+import { multiempresaCanales } from "@/server/empresas/flag";
 
 export type ChannelPreference = { whatsapp: boolean; telegram: boolean };
 
-/** Compatibilidad: toda organización existente conserva WhatsApp encendido. */
+/** Las instalaciones de un solo negocio conservan WhatsApp encendido por defecto. */
 export async function channelPreferenceFor(organizationId: string): Promise<ChannelPreference> {
   const [row] = await getDb().select().from(schema.channelPreference)
     .where(eq(schema.channelPreference.organizationId, organizationId)).limit(1);
   return {
-    whatsapp: row?.whatsappEnabled ?? true,
+    whatsapp: row?.whatsappEnabled ?? !multiempresaCanales(),
     telegram: isChannelEnabled("telegram") && (row?.telegramEnabled ?? false),
   };
 }
@@ -38,6 +39,6 @@ export async function isChannelActiveForOrg(
   organizationId: string
 ): Promise<boolean> {
   if (!isChannelEnabled(channel)) return false;
-  if (channel === "whatsapp" && !isChannelEnabled("telegram")) return true;
+  if (channel === "whatsapp" && !multiempresaCanales() && !isChannelEnabled("telegram")) return true;
   return (await channelPreferenceFor(organizationId))[channel];
 }

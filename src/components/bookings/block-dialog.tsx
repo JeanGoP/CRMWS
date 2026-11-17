@@ -1,5 +1,6 @@
 "use client";
 
+import { fetchEmpresa } from "@/lib/empresas-cliente";
 import { useEffect, useState } from "react";
 import { blockStartUtc } from "@/lib/time/calendar";
 import { Button } from "@/components/ui/button";
@@ -60,7 +61,7 @@ export function BlockDialog({
     }
     setBusy(true);
     setError(null);
-    const res = await fetch("/api/bookings", {
+    const res = await fetchEmpresa("/api/bookings", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

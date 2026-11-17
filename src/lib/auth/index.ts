@@ -9,7 +9,9 @@ import { AUTH_RATE_LIMIT, checkRateLimit, clientIp } from "@/lib/rate-limit";
 import {
   onUserCreated,
   resolveActiveOrganizationId,
+  resolveMembership,
 } from "@/server/auth/on-signup";
+import { multiempresaActiva } from "@/server/empresas/flag";
 import { isPublicSignupAllowed } from "@/server/auth/registration";
 
 /**
@@ -38,7 +40,7 @@ function isInternalSignup(): boolean {
   return internalSignupContext().getStore() === true;
 }
 
-const RATE_LIMITED_PATHS = new Set(["/sign-in/email", "/sign-up/email"]);
+const RATE_LIMITED_PATHS = new Set(["/sign-in/email", "/sign-up/email", "/change-password"]);
 
 function createAuth() {
   const env = getEnv();
@@ -77,7 +79,10 @@ function createAuth() {
         }
         // Registro público cerrado tras la primera organización (FR-060).
         if (ctx.path === "/sign-up/email") {
-          if (!isInternalSignup() && !(await isPublicSignupAllowed())) {
+          const emailOperador = process.env.MULTIEMPRESA_ADMIN_EMAIL?.trim().toLowerCase();
+          const emailRegistro = typeof ctx.body?.email === "string" ? ctx.body.email.trim().toLowerCase() : "";
+          const operadorValido = !multiempresaActiva() || Boolean(emailOperador && emailOperador === emailRegistro);
+          if (!isInternalSignup() && (!operadorValido || !(await isPublicSignupAllowed()))) {
             throw new APIError("FORBIDDEN", {
               message:
                 "El registro está cerrado: esta instancia ya tiene su organización",
@@ -96,7 +101,13 @@ function createAuth() {
       },
       session: {
         create: {
-          before: async (session) => {
+          before: async (session, ctx) => {
+            const anterior = ctx?.path === "/change-password" ? ctx.context.session?.session : null;
+            const activa = anterior?.activeOrganizationId;
+            if (multiempresaActiva() && anterior?.userId === session.userId &&
+                typeof activa === "string" && await resolveMembership(session.userId, activa)) {
+              return { data: { ...session, activeOrganizationId: activa } };
+            }
             const organizationId = await resolveActiveOrganizationId(
               session.userId
             );
